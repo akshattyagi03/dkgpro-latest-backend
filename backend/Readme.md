@@ -64,27 +64,77 @@ PORT=6969
 ## User routes
 Base URL: `/users`
 
-### 1. Register User
+### 1. Send Registration OTP
 - **Method:** POST
-- **Endpoint:** `/users/register`
+- **Endpoint:** `/users/send-otp`
 - **Auth:** none
-- **Description:** Create new user account
+- **Description:** Send OTP to email for registration
+- **Body:**
+```json
+{
+  "email": "jane@example.com"
+}
+```
+- **Success:** 200 OK
+
+### 2. Verify OTP & Register
+- **Method:** POST
+- **Endpoint:** `/users/verify-otp`
+- **Auth:** none
+- **Description:** Verify OTP and create user account
 - **Body:**
 ```json
 {
   "fullName": "Jane Doe",
-  "email": "jane@example.com", 
+  "email": "jane@example.com",
   "password": "secret123",
-  "phoneNumber": "+1234567890"
+  "phoneNumber": "+1234567890",
+  "otp": "123456"
 }
 ```
 - **Success:** 201 Created + sets `accessToken` and `refreshToken` cookies
 
-### 2. Login User
+### 3. Send Phone OTP
+- **Method:** POST
+- **Endpoint:** `/users/send-phone-otp`
+- **Auth:** none
+- **Description:** Send OTP to phone for login/registration
+- **Body:**
+```json
+{
+  "phoneNumber": "+1234567890"
+}
+```
+- **Success:** 200 OK
+
+### 4. Phone Login/Register
+- **Method:** POST
+- **Endpoint:** `/users/verify-phone-login`
+- **Auth:** none
+- **Description:** Login existing user or register new user with phone OTP
+- **Body (Login):**
+```json
+{
+  "phoneNumber": "+1234567890",
+  "otp": "123456"
+}
+```
+- **Body (Register):**
+```json
+{
+  "phoneNumber": "+1234567890",
+  "otp": "123456",
+  "fullName": "Jane Doe",
+  "email": "jane@example.com"
+}
+```
+- **Success:** 200 OK + sets `accessToken` and `refreshToken` cookies
+
+### 5. Login User
 - **Method:** POST
 - **Endpoint:** `/users/login`
 - **Auth:** none
-- **Description:** Authenticate user and set cookie
+- **Description:** Authenticate user with email/password
 - **Body:**
 ```json
 {
@@ -94,21 +144,56 @@ Base URL: `/users`
 ```
 - **Success:** 200 OK + sets `accessToken` and `refreshToken` cookies
 
-### 3. Get Products (Home)
+### 6. Forgot Password
+- **Method:** POST
+- **Endpoint:** `/users/forgot-password`
+- **Auth:** none
+- **Description:** Send password reset OTP to email
+- **Body:**
+```json
+{
+  "email": "jane@example.com"
+}
+```
+- **Success:** 200 OK
+
+### 7. Reset Password
+- **Method:** POST
+- **Endpoint:** `/users/reset-password`
+- **Auth:** none
+- **Description:** Reset password with OTP
+- **Body:**
+```json
+{
+  "email": "jane@example.com",
+  "otp": "123456",
+  "newPassword": "newPassword123"
+}
+```
+- **Success:** 200 OK
+
+### 8. Get Products (Home)
 - **Method:** GET
 - **Endpoint:** `/users/home`
 - **Auth:** none
-- **Description:** Get all products for browsing
+- **Description:** Get all products with categories and customizations
 - **Success:** 200 OK with products array
 
-### 4. Check Pincode
+### 9. Get Products by City
+- **Method:** GET
+- **Endpoint:** `/users/products/{city}`
+- **Auth:** none
+- **Description:** Get products available in specific city
+- **Success:** 200 OK with filtered products
+
+### 10. Check Pincode
 - **Method:** GET
 - **Endpoint:** `/users/check/{pincode}`
 - **Auth:** none
 - **Description:** Get district name for pincode
 - **Success:** 200 OK `{ "district": "Mumbai" }`
 
-### 5. Logout
+### 11. Logout
 - **Method:** GET
 - **Endpoint:** `/users/logout`
 - **Auth:** user cookie
@@ -123,22 +208,36 @@ Base URL: `/admins`
 
 ### Authentication
 
-#### 1. Register Admin
+#### 1. Send Admin OTP
 - **Method:** POST
-- **Endpoint:** `/admins/register`
+- **Endpoint:** `/admins/send-otp`
 - **Auth:** none
-- **Description:** Submit admin registration (pending approval)
+- **Description:** Send OTP to email for admin registration
+- **Body:**
+```json
+{
+  "email": "admin@example.com"
+}
+```
+- **Success:** 200 OK
+
+#### 2. Verify Admin OTP & Register
+- **Method:** POST
+- **Endpoint:** `/admins/verify-otp`
+- **Auth:** none
+- **Description:** Verify OTP and submit admin registration (pending approval)
 - **Body:**
 ```json
 {
   "fullName": "John Admin",
   "email": "admin@example.com",
-  "password": "secure123"
+  "password": "secure123",
+  "otp": "123456"
 }
 ```
-- **Success:** 201 Created (pending approval message, no cookies set)
+- **Success:** 201 Created (pending approval message)
 
-#### 2. Login Admin
+#### 3. Login Admin
 - **Method:** POST
 - **Endpoint:** `/admins/login`
 - **Auth:** none (requires approval)
@@ -154,7 +253,7 @@ Base URL: `/admins`
 
 ### Admin Dashboard
 
-#### 3. Admin Home
+#### 4. Admin Home
 - **Method:** GET
 - **Endpoint:** `/admins/home`
 - **Auth:** admin cookie
@@ -163,40 +262,39 @@ Base URL: `/admins`
 
 ### Product Management
 
-#### 4. Add Product
+#### 5. Add Product
 - **Method:** POST
 - **Endpoint:** `/admins/addproducts`
 - **Auth:** admin cookie
-- **Description:** Create new product with categories and service areas
+- **Description:** Create new product with categories, addons, and customizations
 - **Body:**
 ```json
 {
-  "name": "Wedding Photography",
-  "description": "Professional wedding photography services",
-  "price": 50000,
+  "name": "Premium Wedding Photography Package",
+  "description": "Complete wedding photography with professional editing",
+  "price": 75000,
   "mainCategory": "Wedding",
-  "subCategory": "Photography", 
+  "subCategory": "Photography",
   "thirdCategory": "Traditional",
+  "additionalCategories": ["Outdoor", "Garden"],
+  "customizationSections": ["Recommended"],
+  "images": ["https://example.com/photo1.jpg"],
   "serviceableAreas": [
     {
       "city": "Mumbai",
       "districts": ["Andheri", "Bandra", "Colaba"]
-    },
-    {
-      "city": "Delhi", 
-      "districts": ["CP", "Karol Bagh"]
     }
   ]
 }
 ```
-- **Success:** 201 Created with product object
+- **Success:** 201 Created with populated product object
 
-#### 5. Get Admin Products
+#### 6. Get Admin Products
 - **Method:** GET
 - **Endpoint:** `/admins/products`
 - **Auth:** admin cookie
-- **Description:** Get products created by authenticated admin
-- **Success:** 200 OK with products array
+- **Description:** Get products created by authenticated admin with full population
+- **Success:** 200 OK with products array including categories, addons, and customizations
 
 ### Category Management
 
@@ -245,6 +343,99 @@ Base URL: `/admins`
 }
 ```
 
+#### 10. Create Category Hierarchy
+- **Method:** POST
+- **Endpoint:** `/admins/create-category-tree`
+- **Auth:** admin cookie
+- **Description:** Create complete category hierarchy in one request
+- **Body:**
+```json
+{
+  "mainCategory": {
+    "name": "Wedding",
+    "description": "Wedding services"
+  },
+  "subCategory": {
+    "name": "Photography",
+    "description": "Photography services"
+  },
+  "thirdCategory": {
+    "name": "Traditional",
+    "description": "Traditional photography"
+  },
+  "additionalCategories": [
+    {
+      "name": "Outdoor",
+      "description": "Outdoor photography"
+    }
+  ]
+}
+```
+
+#### 11. Get Category Tree
+- **Method:** GET
+- **Endpoint:** `/admins/category-tree`
+- **Auth:** admin cookie
+- **Description:** Get complete hierarchical category structure
+- **Success:** 200 OK with nested category tree
+
+#### 12. Add Addon
+- **Method:** POST
+- **Endpoint:** `/admins/add-addon`
+- **Auth:** admin cookie
+- **Description:** Create product addon
+- **Body:**
+```json
+{
+  "name": "Extra Photo Album",
+  "description": "Premium leather-bound photo album",
+  "price": 5000,
+  "image": "https://example.com/album.jpg"
+}
+```
+
+#### 13. Add Customization Section
+- **Method:** POST
+- **Endpoint:** `/admins/add-customization-section`
+- **Auth:** admin cookie
+- **Description:** Create customization section with sub-sections and addons
+- **Body:**
+```json
+{
+  "name": "Recommended",
+  "description": "Popular add-ons",
+  "subSections": [
+    {
+      "name": "Photography Extras",
+      "description": "Additional photography services",
+      "addons": ["Extra Photo Album", "Drone Photography"]
+    }
+  ]
+}
+```
+
+#### 14. Add Venue
+- **Method:** POST
+- **Endpoint:** `/admins/add-venue`
+- **Auth:** admin cookie
+- **Description:** Create venue
+- **Body:**
+```json
+{
+  "name": "Grand Ballroom Palace",
+  "location": "Mumbai, Maharashtra",
+  "images": ["https://example.com/venue1.jpg"],
+  "description": "Elegant ballroom for weddings"
+}
+```
+
+#### 15. Get Venues
+- **Method:** GET
+- **Endpoint:** `/admins/venues`
+- **Auth:** admin cookie
+- **Description:** Get all venues
+- **Success:** 200 OK with venues array
+
 ### Blog Management
 
 #### 10. Create Blog
@@ -292,20 +483,33 @@ Base URL: `/superadmins`
 
 ### Authentication
 
-#### 1. Register Super Admin
+#### 1. Send Super Admin OTP
 - **Method:** POST
-- **Endpoint:** `/superadmins/register`
-- **Auth:** none
+- **Endpoint:** `/superadmins/send-otp`
+- **Auth:** none (development only)
+- **Body:**
+```json
+{
+  "email": "superadmin@example.com"
+}
+```
+
+#### 2. Verify Super Admin OTP & Register
+- **Method:** POST
+- **Endpoint:** `/superadmins/verify-otp`
+- **Auth:** none (development only)
 - **Body:**
 ```json
 {
   "fullName": "Super Admin",
   "email": "superadmin@example.com",
-  "password": "supersecure123"
+  "password": "supersecure123",
+  "otp": "123456"
 }
 ```
+- **Success:** 201 Created + sets `superAdminAccessToken` and `superAdminRefreshToken` cookies
 
-#### 2. Login Super Admin
+#### 3. Login Super Admin
 - **Method:** POST
 - **Endpoint:** `/superadmins/login`
 - **Auth:** none
@@ -316,7 +520,7 @@ Base URL: `/superadmins`
   "password": "supersecure123"
 }
 ```
-- **Success:** 200 OK + sets `superAdminToken` cookie
+- **Success:** 200 OK + sets `superAdminAccessToken` and `superAdminRefreshToken` cookies
 
 ### Admin Management
 
@@ -344,7 +548,8 @@ Base URL: `/superadmins`
 - **Method:** GET
 - **Endpoint:** `/superadmins/products`
 - **Auth:** super-admin cookie
-- **Description:** View all products from all admins
+- **Description:** View all products from all admins with full population
+- **Success:** 200 OK with complete product data
 
 #### 7. Edit Any Product
 - **Method:** PUT
@@ -357,6 +562,24 @@ Base URL: `/superadmins`
 - **Endpoint:** `/superadmins/delete-product/{productId}`
 - **Auth:** super-admin cookie
 - **Description:** Delete any product from system
+
+#### 9. Get All Venues
+- **Method:** GET
+- **Endpoint:** `/superadmins/venues`
+- **Auth:** super-admin cookie
+- **Description:** View all venues
+
+#### 10. Edit Venue
+- **Method:** PUT
+- **Endpoint:** `/superadmins/edit-venue/{venueId}`
+- **Auth:** super-admin cookie
+- **Description:** Edit any venue
+
+#### 11. Delete Venue
+- **Method:** DELETE
+- **Endpoint:** `/superadmins/delete-venue/{venueId}`
+- **Auth:** super-admin cookie
+- **Description:** Delete any venue
 
 ---
 
@@ -386,14 +609,44 @@ Products include:
 - **404 Not Found** — resource not found
 - **500 Internal Server Error** — unexpected server error
 
+## New Features
+
+### OTP Authentication
+- Email OTP for user/admin/super-admin registration
+- Phone OTP for user login/registration (Twilio integration)
+- Password reset with email OTP
+- 5-minute OTP expiry
+
+### Enhanced Category System
+- Unlimited category levels (4th, 5th, 6th...)
+- Single route for complete category hierarchy creation
+- Category tree view with full nesting
+- Name-based category references
+
+### Product Customization
+- Customization sections with sub-sections
+- Product addons with name, description, price, image
+- Flexible addon organization
+- Full population in product responses
+
+### Venue Management
+- Venue creation by admins
+- Venue modification/deletion by super-admins
+- Venue details: name, location, images, description
+
+### Phone Authentication
+- SMS OTP via Twilio
+- Login existing users or register new users
+- Automatic user creation with phone verification
+
 ## Implementation notes
 - Cookie-based JWT authentication with httpOnly cookies
 - Admin approval workflow managed by super-admin
-- Three-tier category system with name-based lookups
+- Flexible category system with unlimited depth
 - Service areas support city/district granularity
 - All passwords hashed with bcryptjs
 - MongoDB with Mongoose ODM
-- No semicolons in codebase (style choice)
+- Name-based entity references for easier API usage
 
 ---
 

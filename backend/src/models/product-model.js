@@ -48,6 +48,18 @@ const productSchema = new mongoose.Schema({
       type: String,
       trim: true
     }]
+  }],
+  additionalCategories: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'AdditionalCategory'
+  }],
+  customizationSections: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CustomizationSection'
+  }],
+  keywords: [{
+    type: String,
+    trim: true
   }]
 }, {
   timestamps: true

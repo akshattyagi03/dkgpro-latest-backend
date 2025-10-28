@@ -1,6 +1,14 @@
 const User = require('../models/user-model')
 const RefreshToken = require('../models/refresh-token-model')
+const OTP = require('../models/otp-model')
+const MainCategory = require('../models/main-category-model')
+const SubCategory = require('../models/sub-category-model')
+const ThirdCategory = require('../models/third-category-model')
 const jwt = require('jsonwebtoken')
+const bcrypt = require('bcryptjs')
+const { generateOTP } = require('../utils/otp-generator')
+const { sendOTP } = require('../utils/email-service')
+const { sendSMSOTP } = require('../utils/sms-service')
 
 const generateTokens = async (userId) => {
   const accessToken = jwt.sign(
@@ -21,17 +29,44 @@ const generateTokens = async (userId) => {
   return { accessToken, refreshToken: refreshTokenValue }
 }
 
-const registerUser = async (userData, res) => {
-  const { fullName, email, password, phoneNumber } = userData
+const sendUserOTP = async (userData) => {
+  const { email } = userData
   
   const existingUser = await User.findOne({ email })
   if (existingUser) {
     throw new Error('User already exists')
   }
+  
+  const otp = generateOTP()
+  await OTP.findOneAndDelete({ email, userType: 'User' })
+  await new OTP({ email, otp, userType: 'User' }).save()
+  await sendOTP(email, otp, 'User')
+  
+  return { message: 'OTP sent to email' }
+}
 
+const verifyUserOTP = async (userData, res) => {
+  const { fullName, email, password, phoneNumber, otp } = userData
+  
+  const otpRecord = await OTP.findOne({ email, userType: 'User' })
+  
+  if (!otpRecord) {
+    throw new Error('OTP not found')
+  }
+  
+  if (otpRecord.expiresAt < new Date()) {
+    await OTP.findOneAndDelete({ email, userType: 'User' })
+    throw new Error('OTP expired')
+  }
+  
+  if (otpRecord.otp !== otp.toString()) {
+    throw new Error('Invalid OTP')
+  }
+  
   const user = new User({ fullName, email, password, phoneNumber })
   await user.save()
-
+  await OTP.findOneAndDelete({ email, userType: 'User' })
+  
   const { accessToken, refreshToken } = await generateTokens(user._id)
   
   res.cookie('accessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
@@ -58,7 +93,18 @@ const loginUser = async (userData, res) => {
 
 const getProducts = async () => {
   const Product = require('../models/product-model')
-  const products = await Product.find().populate('category addedBy')
+  const products = await Product.find()
+    .populate('mainCategory')
+    .populate('subCategory')
+    .populate('thirdCategory')
+    .populate('additionalCategories')
+    .populate({
+      path: 'customizationSections',
+      populate: {
+        path: 'subSections.addons'
+      }
+    })
+    .populate('addedBy')
   return products
 }
 
@@ -105,9 +151,14 @@ const getProductsByCity = async (city, page = 1, limit = 10) => {
     .skip(skip)
     .limit(limitNum)
     .populate('mainCategory subCategory thirdCategory')
-  
+    .populate('additionalCategories')
+    .populate({
+      path: 'customizationSections',
+      populate: {
+        path: 'subSections.addons'
+      }
+    })
   const total = await Product.countDocuments(query)
-  
   const categories = {}
   products.forEach(product => {
     const main = product.mainCategory.name
@@ -120,7 +171,6 @@ const getProductsByCity = async (city, page = 1, limit = 10) => {
       categories[main][sub].push(third)
     }
   })
-  
   return {
     products,
     pagination: {
@@ -133,7 +183,6 @@ const getProductsByCity = async (city, page = 1, limit = 10) => {
     availableCategories: categories
   }
 }
-
 const logoutUser = async (refreshTokenValue) => {
   if (refreshTokenValue) {
     await RefreshToken.findOneAndUpdate(
@@ -143,4 +192,106 @@ const logoutUser = async (refreshTokenValue) => {
   }
 }
 
-module.exports = { registerUser, loginUser, getProducts, checkPincode, getProductsByCity, refreshAccessToken, logoutUser }
+const sendPasswordResetOTP = async (userData) => {
+  const { email } = userData
+  
+  const user = await User.findOne({ email })
+  if (!user) {
+    throw new Error('User not found')
+  }
+  
+  const otp = generateOTP()
+  await OTP.findOneAndDelete({ email, userType: 'PasswordReset' })
+  await new OTP({ email, otp, userType: 'PasswordReset' }).save()
+  await sendOTP(email, otp, 'Password Reset')
+  
+  return { message: 'Password reset OTP sent to email' }
+}
+
+const resetPassword = async (userData) => {
+  const { email, otp, newPassword } = userData
+  
+  if (!newPassword) {
+    throw new Error('New password is required')
+  }
+  
+  const otpRecord = await OTP.findOne({ email, userType: 'PasswordReset' })
+  
+  if (!otpRecord) {
+    throw new Error('OTP not found')
+  }
+  
+  if (otpRecord.expiresAt < new Date()) {
+    await OTP.findOneAndDelete({ email, userType: 'PasswordReset' })
+    throw new Error('OTP expired')
+  }
+  
+  if (otpRecord.otp !== otp.toString()) {
+    throw new Error('Invalid OTP')
+  }
+  
+  const hashedPassword = await bcrypt.hash(newPassword, 10)
+  await User.findOneAndUpdate(
+    { email },
+    { password: hashedPassword }
+  )
+  await OTP.findOneAndDelete({ email, userType: 'PasswordReset' })
+  
+  return { message: 'Password reset successfully' }
+}
+
+const sendPhoneOTP = async (userData) => {
+  const { phoneNumber } = userData
+  
+  const otp = generateOTP()
+  await OTP.findOneAndDelete({ phoneNumber, userType: 'PhoneLogin' })
+  await new OTP({ phoneNumber, otp, userType: 'PhoneLogin' }).save()
+  await sendSMSOTP(phoneNumber, otp)
+  
+  return { message: 'OTP sent to phone' }
+}
+
+const verifyPhoneLogin = async (userData, res) => {
+  const { phoneNumber, otp, fullName, email } = userData
+  
+  const otpRecord = await OTP.findOne({ phoneNumber, userType: 'PhoneLogin' })
+  
+  if (!otpRecord) {
+    throw new Error('OTP not found')
+  }
+  
+  if (otpRecord.expiresAt < new Date()) {
+    await OTP.findOneAndDelete({ phoneNumber, userType: 'PhoneLogin' })
+    throw new Error('OTP expired')
+  }
+  
+  if (otpRecord.otp !== otp.toString()) {
+    throw new Error('Invalid OTP')
+  }
+  
+  let user = await User.findOne({ phoneNumber })
+  
+  if (!user) {
+    if (!fullName || !email) {
+      throw new Error('Full name and email required for new user')
+    }
+    user = new User({ 
+      fullName, 
+      email, 
+      phoneNumber, 
+      password: 'temp123' // temporary password
+    })
+    await user.save()
+  }
+  
+  await OTP.findOneAndDelete({ phoneNumber, userType: 'PhoneLogin' })
+  
+  const { accessToken, refreshToken } = await generateTokens(user._id)
+  
+  res.cookie('accessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
+  res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+  
+  return { user: { id: user._id, fullName: user.fullName, email: user.email, phoneNumber: user.phoneNumber } }
+}
+
+module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, checkPincode, getProductsByCity, refreshAccessToken, logoutUser }

@@ -1,6 +1,7 @@
 const express = require('express')
 const {
-  register,
+  sendOTP,
+  verifyOTP,
   login,
   getPendingAdminRequests,
   approveAdminRequest,
@@ -13,11 +14,18 @@ const {
 const { isSuperAdmin } = require('../middleware/auth')
 const router = express.Router()
 
-router.post('/register', (req, res) => {
+router.post('/send-otp', (req, res) => {
   if (process.env.NODE_ENV === 'production') {
     return res.status(403).json({ message: 'Super admin creation only allowed in development environment' })
   }
-  register(req, res)
+  sendOTP(req, res)
+})
+
+router.post('/verify-otp', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ message: 'Super admin creation only allowed in development environment' })
+  }
+  verifyOTP(req, res)
 })
 
 router.post('/login', login)

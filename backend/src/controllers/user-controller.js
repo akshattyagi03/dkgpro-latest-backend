@@ -1,5 +1,10 @@
 const { 
-  registerUser, 
+  sendUserOTP, 
+  verifyUserOTP, 
+  sendPasswordResetOTP,
+  resetPassword,
+  sendPhoneOTP,
+  verifyPhoneLogin,
   loginUser, 
   getProducts, 
   checkPincode, 
@@ -8,14 +13,25 @@ const {
 } = require('../services/user-services')
 const { HTTP_STATUS } = require('../utils/constants')
 
-const register = async (req, res) => {
+const sendOTP = async (req, res) => {
   try {
-    const result = await registerUser(req.body, res)
+    const result = await sendUserOTP(req.body)
+    res.status(HTTP_STATUS.OK).json(result)
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
+const verifyOTP = async (req, res) => {
+  try {
+    const result = await verifyUserOTP(req.body, res)
     res.status(HTTP_STATUS.CREATED).json(result)
   } catch (error) {
     res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
   }
 }
+
+
 
 const login = async (req, res) => {
   try {
@@ -68,8 +84,49 @@ const logout = async (req, res) => {
   }
 }
 
+const sendResetOTP = async (req, res) => {
+  try {
+    const result = await sendPasswordResetOTP(req.body)
+    res.status(HTTP_STATUS.OK).json(result)
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
+const verifyResetPassword = async (req, res) => {
+  try {
+    const result = await resetPassword(req.body)
+    res.status(HTTP_STATUS.OK).json(result)
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
+const sendPhoneOTPController = async (req, res) => {
+  try {
+    const result = await sendPhoneOTP(req.body)
+    res.status(HTTP_STATUS.OK).json(result)
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
+const verifyPhoneLoginController = async (req, res) => {
+  try {
+    const result = await verifyPhoneLogin(req.body, res)
+    res.status(HTTP_STATUS.OK).json(result)
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
 module.exports = {
-  register,
+  sendOTP,
+  verifyOTP,
+  sendResetOTP,
+  verifyResetPassword,
+  sendPhoneOTP: sendPhoneOTPController,
+  verifyPhoneLogin: verifyPhoneLoginController,
   login,
   home,
   checkPincodeDistrict,

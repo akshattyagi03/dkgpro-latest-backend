@@ -1,5 +1,6 @@
 const { 
-  registerSuperAdmin, 
+  sendSuperAdminOTP, 
+  verifySuperAdminOTP, 
   loginSuperAdmin, 
   getPendingAdmins, 
   approveAdmin, 
@@ -7,12 +8,24 @@ const {
   getAllProducts, 
   editProduct, 
   deleteProduct,
+  getAllVenues,
+  updateVenue,
+  removeVenue,
   logoutSuperAdmin
 } = require('../services/super-admin-services')
 
-const register = async (req, res) => {
+const sendOTP = async (req, res) => {
   try {
-    const result = await registerSuperAdmin(req.body, res)
+    const result = await sendSuperAdminOTP(req.body)
+    res.status(200).json(result)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const verifyOTP = async (req, res) => {
+  try {
+    const result = await verifySuperAdminOTP(req.body, res)
     res.status(201).json(result)
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -95,8 +108,36 @@ const logout = async (req, res) => {
   }
 }
 
+const getVenues = async (req, res) => {
+  try {
+    const venues = await getAllVenues()
+    res.status(200).json({ venues })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const editVenue = async (req, res) => {
+  try {
+    const venue = await updateVenue(req.params.venueId, req.body)
+    res.status(200).json({ message: 'Venue updated successfully', venue })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const deleteVenue = async (req, res) => {
+  try {
+    await removeVenue(req.params.venueId)
+    res.status(200).json({ message: 'Venue deleted successfully' })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 module.exports = {
-  register,
+  sendOTP,
+  verifyOTP,
   login,
   getPendingAdminRequests,
   approveAdminRequest,
@@ -104,5 +145,8 @@ module.exports = {
   getProducts,
   updateProduct,
   removeProduct,
+  getVenues,
+  editVenue,
+  deleteVenue,
   logout
 }

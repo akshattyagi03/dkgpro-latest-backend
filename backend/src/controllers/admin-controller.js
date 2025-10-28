@@ -1,22 +1,38 @@
 const { 
-  registerAdmin, 
+  sendAdminOTP, 
+  verifyAdminOTP, 
   loginAdmin, 
   addProducts, 
   createBlog, 
   getProducts, 
   getCategories, 
+  getCategoryTree,
   addMainCategory, 
   addSubCategory, 
   addThirdCategory, 
+  createCategoryHierarchy,
+  addAddon,
+  createCustomizationSection,
+  addVenue,
+  getVenues,
   getBlogs, 
   editBlog, 
   deleteBlog,
   logoutAdmin
 } = require('../services/admin-services')
 
-const register = async (req, res) => {
+const sendOTP = async (req, res) => {
   try {
-    const result = await registerAdmin(req.body, res)
+    const result = await sendAdminOTP(req.body)
+    res.status(200).json(result)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const verifyOTP = async (req, res) => {
+  try {
+    const result = await verifyAdminOTP(req.body)
     res.status(201).json(result)
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -139,16 +155,77 @@ const logout = async (req, res) => {
   }
 }
 
+const createCategoryTree = async (req, res) => {
+  try {
+    const result = await createCategoryHierarchy(req.body)
+    res.status(201).json({ message: 'Category hierarchy created successfully', result })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const createVenue = async (req, res) => {
+  try {
+    const venue = await addVenue(req.body, req.admin._id)
+    res.status(201).json({ message: 'Venue added successfully', venue })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const getAllVenues = async (req, res) => {
+  try {
+    const venues = await getVenues()
+    res.status(200).json({ venues })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const getCategoryTreeView = async (req, res) => {
+  try {
+    const categoryTree = await getCategoryTree()
+    res.status(200).json({ categoryTree })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const createAddon = async (req, res) => {
+  try {
+    const addon = await addAddon(req.body)
+    res.status(201).json({ message: 'Addon created successfully', addon })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const createCustomizationSectionController = async (req, res) => {
+  try {
+    const section = await createCustomizationSection(req.body)
+    res.status(201).json({ message: 'Customization section created successfully', section })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 module.exports = {
-  register,
+  sendOTP,
+  verifyOTP,
   login,
   getHome,
   addProduct,
   getAdminProducts,
   getAllCategories,
+  getCategoryTreeView,
   createMainCategory,
   createSubCategory,
   createThirdCategory,
+  createCategoryTree,
+  createAddon,
+  createCustomizationSection: createCustomizationSectionController,
+  createVenue,
+  getAllVenues,
   createNewBlog,
   getAdminBlogs,
   updateBlog,

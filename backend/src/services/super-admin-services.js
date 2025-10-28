@@ -1,6 +1,9 @@
 const SuperAdmin = require('../models/super-admin-model')
 const RefreshToken = require('../models/refresh-token-model')
+const OTP = require('../models/otp-model')
 const jwt = require('jsonwebtoken')
+const { generateOTP } = require('../utils/otp-generator')
+const { sendOTP } = require('../utils/email-service')
 
 const generateSuperAdminTokens = async (superAdminId) => {
   const accessToken = jwt.sign(
@@ -21,15 +24,43 @@ const generateSuperAdminTokens = async (superAdminId) => {
   return { accessToken, refreshToken: refreshTokenValue }
 }
 
-const registerSuperAdmin = async (superAdminData, res) => {
-  const { fullName, email, password } = superAdminData
+const sendSuperAdminOTP = async (superAdminData) => {
+  const { email } = superAdminData
   
   const existingSuperAdmin = await SuperAdmin.findOne({ email })
   if (existingSuperAdmin) {
     throw new Error('Super admin already exists')
   }
+  
+  const otp = generateOTP()
+  await OTP.findOneAndDelete({ email, userType: 'SuperAdmin' })
+  await new OTP({ email, otp, userType: 'SuperAdmin' }).save()
+  await sendOTP(email, otp, 'SuperAdmin')
+  
+  return { message: 'OTP sent to email' }
+}
+
+const verifySuperAdminOTP = async (superAdminData, res) => {
+  const { fullName, email, password, otp } = superAdminData
+  
+  const otpRecord = await OTP.findOne({ email, userType: 'SuperAdmin' })
+  
+  if (!otpRecord) {
+    throw new Error('OTP not found')
+  }
+  
+  if (otpRecord.expiresAt < new Date()) {
+    await OTP.findOneAndDelete({ email, userType: 'SuperAdmin' })
+    throw new Error('OTP expired')
+  }
+  
+  if (otpRecord.otp !== otp.toString()) {
+    throw new Error('Invalid OTP')
+  }
+  
   const superAdmin = new SuperAdmin({ fullName, email, password })
   await superAdmin.save()
+  await OTP.findOneAndDelete({ email, userType: 'SuperAdmin' })
 
   const { accessToken, refreshToken } = await generateSuperAdminTokens(superAdmin._id)
   
@@ -96,6 +127,13 @@ const getAllProducts = async () => {
     .populate('mainCategory')
     .populate('subCategory')
     .populate('thirdCategory')
+    .populate('additionalCategories')
+    .populate({
+      path: 'customizationSections',
+      populate: {
+        path: 'subSections.addons'
+      }
+    })
     .populate('addedBy')
   return products
 }
@@ -156,8 +194,41 @@ const logoutSuperAdmin = async (refreshTokenValue) => {
   }
 }
 
+const updateVenue = async (venueId, updateData) => {
+  const Venue = require('../models/venue-model')
+  const venue = await Venue.findByIdAndUpdate(
+    venueId,
+    updateData,
+    { new: true }
+  )
+  
+  if (!venue) {
+    throw new Error('Venue not found')
+  }
+  
+  return venue
+}
+
+const removeVenue = async (venueId) => {
+  const Venue = require('../models/venue-model')
+  const venue = await Venue.findByIdAndDelete(venueId)
+  
+  if (!venue) {
+    throw new Error('Venue not found')
+  }
+  
+  return venue
+}
+
+const getAllVenues = async () => {
+  const Venue = require('../models/venue-model')
+  const venues = await Venue.find()
+  return venues
+}
+
 module.exports = { 
-  registerSuperAdmin, 
+  sendSuperAdminOTP, 
+  verifySuperAdminOTP, 
   loginSuperAdmin, 
   getPendingAdmins, 
   approveAdmin, 
@@ -165,6 +236,9 @@ module.exports = {
   getAllProducts, 
   editProduct, 
   deleteProduct,
+  getAllVenues,
+  updateVenue,
+  removeVenue,
   refreshSuperAdminAccessToken,
   logoutSuperAdmin
 }
