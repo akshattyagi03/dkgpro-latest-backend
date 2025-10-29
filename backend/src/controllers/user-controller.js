@@ -7,6 +7,7 @@ const {
   verifyPhoneLogin,
   loginUser, 
   getProducts, 
+  getFeaturedProducts,
   checkPincode, 
   getProductsByCity,
   logoutUser 
@@ -120,6 +121,15 @@ const verifyPhoneLoginController = async (req, res) => {
   }
 }
 
+const featuredProducts = async (req, res) => {
+  try {
+    const products = await getFeaturedProducts()
+    res.status(HTTP_STATUS.OK).json({ products })
+  } catch (error) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -129,6 +139,7 @@ module.exports = {
   verifyPhoneLogin: verifyPhoneLoginController,
   login,
   home,
+  featuredProducts,
   checkPincodeDistrict,
   getProductsByCity: getProductsByCityController,
   logout

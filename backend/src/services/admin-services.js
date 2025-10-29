@@ -91,7 +91,7 @@ const addProducts = async (productData, adminId) => {
   const AdditionalCategory = require('../models/additional-category-model')
   const CustomizationSection = require('../models/customization-section-model')
   
-  const { name, description, price, mainCategory, subCategory, thirdCategory, additionalCategories, customizationSections, keywords, images, serviceableAreas } = productData
+  const { name, description, price, mainCategory, subCategory, thirdCategory, additionalCategories, customizationSections, keywords, isFeatured, tier, images, serviceableAreas } = productData
   
   const mainCat = await MainCategory.findOne({ name: mainCategory })
   if (!mainCat) throw new Error(`Main category '${mainCategory}' not found`)
@@ -130,6 +130,8 @@ const addProducts = async (productData, adminId) => {
     additionalCategories: additionalCatIds,
     customizationSections: customizationSectionIds,
     keywords: keywords || [],
+    isFeatured: isFeatured || false,
+    tier: tier || 'standard',
     images: images || [],
     addedBy: adminId,
     serviceableAreas: serviceableAreas || []

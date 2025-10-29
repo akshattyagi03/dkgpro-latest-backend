@@ -60,7 +60,16 @@ const productSchema = new mongoose.Schema({
   keywords: [{
     type: String,
     trim: true
-  }]
+  }],
+  isFeatured: {
+    type: Boolean,
+    default: false
+  },
+  tier: {
+    type: String,
+    enum: ['standard', 'premium'],
+    default: 'standard'
+  }
 }, {
   timestamps: true
 })
