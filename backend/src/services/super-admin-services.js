@@ -226,9 +226,60 @@ const getAllVenues = async () => {
   return venues
 }
 
+const sendSuperAdminPasswordResetOTP = async (superAdminData) => {
+  const { email } = superAdminData
+  
+  const superAdmin = await SuperAdmin.findOne({ email })
+  if (!superAdmin) {
+    throw new Error('Super admin not found')
+  }
+  
+  const otp = generateOTP()
+  await OTP.findOneAndDelete({ email, userType: 'SuperAdminPasswordReset' })
+  await new OTP({ email, otp, userType: 'SuperAdminPasswordReset' }).save()
+  await sendOTP(email, otp, 'Super Admin Password Reset')
+  
+  return { message: 'Password reset OTP sent to email' }
+}
+
+const resetSuperAdminPassword = async (superAdminData) => {
+  const { email, otp, newPassword } = superAdminData
+  
+  if (!newPassword) {
+    throw new Error('New password is required')
+  }
+  
+  const otpRecord = await OTP.findOne({ email, userType: 'SuperAdminPasswordReset' })
+  
+  if (!otpRecord) {
+    throw new Error('OTP not found')
+  }
+  
+  if (otpRecord.expiresAt < new Date()) {
+    await OTP.findOneAndDelete({ email, userType: 'SuperAdminPasswordReset' })
+    throw new Error('OTP expired')
+  }
+  
+  if (otpRecord.otp !== otp.toString()) {
+    throw new Error('Invalid OTP')
+  }
+  
+  const bcrypt = require('bcryptjs')
+  const hashedPassword = await bcrypt.hash(newPassword, 10)
+  await SuperAdmin.findOneAndUpdate(
+    { email },
+    { password: hashedPassword }
+  )
+  await OTP.findOneAndDelete({ email, userType: 'SuperAdminPasswordReset' })
+  
+  return { message: 'Password reset successfully' }
+}
+
 module.exports = { 
   sendSuperAdminOTP, 
   verifySuperAdminOTP, 
+  sendSuperAdminPasswordResetOTP,
+  resetSuperAdminPassword,
   loginSuperAdmin, 
   getPendingAdmins, 
   approveAdmin, 

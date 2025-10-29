@@ -1,6 +1,8 @@
 const { 
   sendAdminOTP, 
   verifyAdminOTP, 
+  sendAdminPasswordResetOTP,
+  resetAdminPassword,
   loginAdmin, 
   addProducts, 
   createBlog, 
@@ -209,9 +211,29 @@ const createCustomizationSectionController = async (req, res) => {
   }
 }
 
+const sendResetOTP = async (req, res) => {
+  try {
+    const result = await sendAdminPasswordResetOTP(req.body)
+    res.status(200).json(result)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const verifyResetPassword = async (req, res) => {
+  try {
+    const result = await resetAdminPassword(req.body)
+    res.status(200).json(result)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
+  sendResetOTP,
+  verifyResetPassword,
   login,
   getHome,
   addProduct,

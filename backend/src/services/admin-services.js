@@ -480,9 +480,59 @@ const createCustomizationSection = async (sectionData) => {
   return section
 }
 
+const sendAdminPasswordResetOTP = async (adminData) => {
+  const { email } = adminData
+  
+  const admin = await Admin.findOne({ email })
+  if (!admin) {
+    throw new Error('Admin not found')
+  }
+  
+  const otp = generateOTP()
+  await OTP.findOneAndDelete({ email, userType: 'AdminPasswordReset' })
+  await new OTP({ email, otp, userType: 'AdminPasswordReset' }).save()
+  await sendOTP(email, otp, 'Admin Password Reset')
+  
+  return { message: 'Password reset OTP sent to email' }
+}
+
+const resetAdminPassword = async (adminData) => {
+  const { email, otp, newPassword } = adminData
+  
+  if (!newPassword) {
+    throw new Error('New password is required')
+  }
+  
+  const otpRecord = await OTP.findOne({ email, userType: 'AdminPasswordReset' })
+  
+  if (!otpRecord) {
+    throw new Error('OTP not found')
+  }
+  
+  if (otpRecord.expiresAt < new Date()) {
+    await OTP.findOneAndDelete({ email, userType: 'AdminPasswordReset' })
+    throw new Error('OTP expired')
+  }
+  
+  if (otpRecord.otp !== otp.toString()) {
+    throw new Error('Invalid OTP')
+  }
+  
+  const hashedPassword = await bcrypt.hash(newPassword, 10)
+  await Admin.findOneAndUpdate(
+    { email },
+    { password: hashedPassword }
+  )
+  await OTP.findOneAndDelete({ email, userType: 'AdminPasswordReset' })
+  
+  return { message: 'Password reset successfully' }
+}
+
 module.exports = { 
   sendAdminOTP, 
   verifyAdminOTP, 
+  sendAdminPasswordResetOTP,
+  resetAdminPassword,
   loginAdmin, 
   addProducts, 
   createBlog, 

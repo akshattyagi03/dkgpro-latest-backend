@@ -2,6 +2,8 @@ const express = require('express')
 const {
   sendOTP,
   verifyOTP,
+  sendResetOTP,
+  verifyResetPassword,
   login,
   getHome,
   addProduct,
@@ -27,6 +29,8 @@ const router = express.Router()
 
 router.post('/send-otp', sendOTP)
 router.post('/verify-otp', verifyOTP)
+router.post('/forgot-password', sendResetOTP)
+router.post('/reset-password', verifyResetPassword)
 router.post('/login', login)
 router.get("/home", isAdmin, getHome)
 router.post("/addproducts", isAdmin, addProduct)

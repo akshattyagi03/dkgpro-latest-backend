@@ -13,7 +13,7 @@ const otpSchema = new mongoose.Schema({
   },
   userType: {
     type: String,
-    enum: ['User', 'Admin', 'SuperAdmin', 'PasswordReset', 'PhoneLogin'],
+    enum: ['User', 'Admin', 'SuperAdmin', 'PasswordReset', 'AdminPasswordReset', 'SuperAdminPasswordReset', 'PhoneLogin'],
     required: true
   },
   expiresAt: {

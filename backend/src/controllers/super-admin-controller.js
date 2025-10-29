@@ -1,6 +1,8 @@
 const { 
   sendSuperAdminOTP, 
   verifySuperAdminOTP, 
+  sendSuperAdminPasswordResetOTP,
+  resetSuperAdminPassword,
   loginSuperAdmin, 
   getPendingAdmins, 
   approveAdmin, 
@@ -135,9 +137,29 @@ const deleteVenue = async (req, res) => {
   }
 }
 
+const sendResetOTP = async (req, res) => {
+  try {
+    const result = await sendSuperAdminPasswordResetOTP(req.body)
+    res.status(200).json(result)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const verifyResetPassword = async (req, res) => {
+  try {
+    const result = await resetSuperAdminPassword(req.body)
+    res.status(200).json(result)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
+  sendResetOTP,
+  verifyResetPassword,
   login,
   getPendingAdminRequests,
   approveAdminRequest,
