@@ -530,6 +530,23 @@ const resetAdminPassword = async (adminData) => {
   return { message: 'Password reset successfully' }
 }
 
+const toggleProductFeatured = async (productId, adminId, featuredData) => {
+  const Product = require('../models/product-model')
+  const { isFeatured } = featuredData
+  
+  const product = await Product.findOneAndUpdate(
+    { _id: productId, addedBy: adminId },
+    { isFeatured },
+    { new: true }
+  )
+  
+  if (!product) {
+    throw new Error('Product not found or unauthorized')
+  }
+  
+  return product
+}
+
 module.exports = { 
   sendAdminOTP, 
   verifyAdminOTP, 
@@ -547,6 +564,7 @@ module.exports = {
   createCategoryHierarchy,
   addAddon,
   createCustomizationSection,
+  toggleProductFeatured,
   addVenue,
   getVenues,
   getBlogs, 

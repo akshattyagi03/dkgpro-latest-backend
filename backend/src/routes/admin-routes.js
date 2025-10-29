@@ -16,6 +16,7 @@ const {
   createCategoryTree,
   createAddon,
   createCustomizationSection,
+  toggleFeatured,
   createVenue,
   getAllVenues,
   createNewBlog,
@@ -35,6 +36,7 @@ router.post('/login', login)
 router.get("/home", isAdmin, getHome)
 router.post("/addproducts", isAdmin, addProduct)
 router.get("/products", isAdmin, getAdminProducts)
+router.put("/toggle-featured/:productId", isAdmin, toggleFeatured)
 router.get("/categories", isAdmin, getAllCategories)
 router.get("/category-tree", isAdmin, getCategoryTreeView)
 router.post("/addcategory", isAdmin, createMainCategory)

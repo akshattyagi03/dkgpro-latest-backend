@@ -15,6 +15,7 @@ const {
   createCategoryHierarchy,
   addAddon,
   createCustomizationSection,
+  toggleProductFeatured,
   addVenue,
   getVenues,
   getBlogs, 
@@ -229,6 +230,15 @@ const verifyResetPassword = async (req, res) => {
   }
 }
 
+const toggleFeatured = async (req, res) => {
+  try {
+    const product = await toggleProductFeatured(req.params.productId, req.admin._id, req.body)
+    res.status(200).json({ message: 'Product featured status updated', product })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -246,6 +256,7 @@ module.exports = {
   createCategoryTree,
   createAddon,
   createCustomizationSection: createCustomizationSectionController,
+  toggleFeatured,
   createVenue,
   getAllVenues,
   createNewBlog,
