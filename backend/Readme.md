@@ -179,21 +179,28 @@ Base URL: `/users`
 - **Description:** Get all products with categories and customizations
 - **Success:** 200 OK with products array
 
-### 9. Get Products by City
+### 9. Get Featured Products
+- **Method:** GET
+- **Endpoint:** `/users/featured`
+- **Auth:** none
+- **Description:** Get only featured products
+- **Success:** 200 OK with featured products array
+
+### 10. Get Products by City
 - **Method:** GET
 - **Endpoint:** `/users/products/{city}`
 - **Auth:** none
 - **Description:** Get products available in specific city
 - **Success:** 200 OK with filtered products
 
-### 10. Check Pincode
+### 11. Check Pincode
 - **Method:** GET
 - **Endpoint:** `/users/check/{pincode}`
 - **Auth:** none
 - **Description:** Get district name for pincode
 - **Success:** 200 OK `{ "district": "Mumbai" }`
 
-### 11. Logout
+### 12. Logout
 - **Method:** GET
 - **Endpoint:** `/users/logout`
 - **Auth:** user cookie
@@ -295,6 +302,19 @@ Base URL: `/admins`
 - **Auth:** admin cookie
 - **Description:** Get products created by authenticated admin with full population
 - **Success:** 200 OK with products array including categories, addons, and customizations
+
+#### 7. Toggle Product Featured Status
+- **Method:** PUT
+- **Endpoint:** `/admins/toggle-featured/{productId}`
+- **Auth:** admin cookie
+- **Description:** Change featured status of admin's own product
+- **Body:**
+```json
+{
+  "isFeatured": true
+}
+```
+- **Success:** 200 OK with updated product
 
 ### Category Management
 
@@ -595,7 +615,10 @@ Products must be assigned to all three category levels. Categories are created u
 ## Product Structure
 Products include:
 - Basic info (name, description, price)
-- Three-tier category assignment
+- Multi-tier category assignment (main, sub, third, additional)
+- Customization sections with addons
+- Keywords for search optimization
+- Featured status and tier (standard/premium)
 - Service areas (cities with their serviceable districts)
 - Images array
 - Creator admin reference
