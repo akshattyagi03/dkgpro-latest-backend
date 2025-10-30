@@ -226,6 +226,12 @@ const getAllVenues = async () => {
   return venues
 }
 
+const getAllAdmins = async () => {
+  const Admin = require('../models/admin-model')
+  const admins = await Admin.find().select('-password')
+  return admins
+}
+
 const sendSuperAdminPasswordResetOTP = async (superAdminData) => {
   const { email } = superAdminData
   
@@ -290,6 +296,7 @@ module.exports = {
   getAllVenues,
   updateVenue,
   removeVenue,
+  getAllAdmins,
   refreshSuperAdminAccessToken,
   logoutSuperAdmin
 }

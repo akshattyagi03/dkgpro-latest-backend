@@ -1,51 +1,48 @@
 const express = require('express')
-const {
-  sendOTP,
-  verifyOTP,
-  sendResetOTP,
-  verifyResetPassword,
-  login,
-  getPendingAdminRequests,
-  approveAdminRequest,
-  rejectAdminRequest,
-  getProducts,
-  updateProduct,
-  removeProduct,
-  getVenues,
-  editVenue,
-  deleteVenue,
-  logout
-} = require('../controllers/super-admin-controller')
+const superAdminController = require('../controllers/super-admin-controller')
 const { isSuperAdmin } = require('../middleware/auth')
 const router = express.Router()
-
+//send otp for registration
 router.post('/send-otp', (req, res) => {
   if (process.env.NODE_ENV === 'production') {
     return res.status(403).json({ message: 'Super admin creation only allowed in development environment' })
   }
-  sendOTP(req, res)
+  superAdminController.sendOTP(req, res)
 })
-
+//verify otp for registration
 router.post('/verify-otp', (req, res) => {
   if (process.env.NODE_ENV === 'production') {
     return res.status(403).json({ message: 'Super admin creation only allowed in development environment' })
   }
-  verifyOTP(req, res)
+  superAdminController.verifyOTP(req, res)
 })
-
-router.post('/forgot-password', sendResetOTP)
-router.post('/reset-password', verifyResetPassword)
-
-router.post('/login', login)
-router.get("/pending-admins", isSuperAdmin, getPendingAdminRequests)
-router.post("/approve-admin/:adminId", isSuperAdmin, approveAdminRequest)
-router.post("/reject-admin/:adminId", isSuperAdmin, rejectAdminRequest)
-router.get("/products", isSuperAdmin, getProducts)
-router.put("/edit-product/:productId", isSuperAdmin, updateProduct)
-router.delete("/delete-product/:productId", isSuperAdmin, removeProduct)
-router.get("/venues", isSuperAdmin, getVenues)
-router.put("/edit-venue/:venueId", isSuperAdmin, editVenue)
-router.delete("/delete-venue/:venueId", isSuperAdmin, deleteVenue)
-router.get("/logout", isSuperAdmin, logout)
+//send otp for reset password
+router.post('/forgot-password', superAdminController.sendResetOTP)
+//verify otp for reset password
+router.post('/reset-password', superAdminController.verifyResetPassword)
+//login super admin
+router.post('/login', superAdminController.login)
+//get pending admins list
+router.get("/pending-admins", isSuperAdmin, superAdminController.getPendingAdminRequests)
+//get all admins
+router.get("/admins", isSuperAdmin, superAdminController.getAdmins)
+//approve admins
+router.post("/approve-admin/:adminId", isSuperAdmin, superAdminController.approveAdminRequest)
+//reject admins
+router.post("/reject-admin/:adminId", isSuperAdmin, superAdminController.rejectAdminRequest)
+//get all products
+router.get("/products", isSuperAdmin, superAdminController.getProducts)
+//edit product
+router.put("/edit-product/:productId", isSuperAdmin, superAdminController.updateProduct)
+//delete product
+router.delete("/delete-product/:productId", isSuperAdmin, superAdminController.removeProduct)
+//get all venues
+router.get("/venues", isSuperAdmin, superAdminController.getVenues)
+//edit venue
+router.put("/edit-venue/:venueId", isSuperAdmin, superAdminController.editVenue)
+//delete venue
+router.delete("/delete-venue/:venueId", isSuperAdmin, superAdminController.deleteVenue)
+//logout super admin
+router.get("/logout", isSuperAdmin, superAdminController.logout)
 
 module.exports = router

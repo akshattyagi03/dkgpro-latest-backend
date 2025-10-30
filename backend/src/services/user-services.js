@@ -96,7 +96,10 @@ const loginUser = async (userData, res) => {
 
 const getProducts = async () => {
   const Product = require('../models/product-model')
-  const products = await Product.find()
+  
+  const featuredProducts = await Product.find({ isFeatured: true })
+    .limit(6)
+    .sort({ createdAt: -1 })
     .populate('mainCategory')
     .populate('subCategory')
     .populate('thirdCategory')
@@ -108,7 +111,51 @@ const getProducts = async () => {
       }
     })
     .populate('addedBy')
-  return products
+  
+  const featuredIds = featuredProducts.map(p => p._id)
+  
+  const premiumProducts = await Product.find({ 
+    tier: 'premium', 
+    _id: { $nin: featuredIds } 
+  })
+    .limit(6)
+    .sort({ isFeatured: -1, createdAt: -1 })
+    .populate('mainCategory')
+    .populate('subCategory')
+    .populate('thirdCategory')
+    .populate('additionalCategories')
+    .populate({
+      path: 'customizationSections',
+      populate: {
+        path: 'subSections.addons'
+      }
+    })
+    .populate('addedBy')
+  
+  const premiumIds = premiumProducts.map(p => p._id)
+  const excludeIds = [...featuredIds, ...premiumIds]
+  
+  const allProducts = await Product.find({ _id: { $nin: excludeIds } })
+    .limit(12)
+    .sort({ isFeatured: -1, createdAt: -1 })
+    .populate('mainCategory')
+    .populate('subCategory')
+    .populate('thirdCategory')
+    .populate('additionalCategories')
+    .populate({
+      path: 'customizationSections',
+      populate: {
+        path: 'subSections.addons'
+      }
+    })
+    .populate('addedBy')
+  
+  return {
+    bannerImage: "https://images.unsplash.com/photo-1519225421980-715cb0215aed",
+    featuredProducts,
+    premiumProducts,
+    allProducts
+  }
 }
 
 const checkPincode = async (pincode) => {
@@ -333,4 +380,48 @@ const getPremiumProducts = async () => {
   return products
 }
 
-module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, checkPincode, getProductsByCity, refreshAccessToken, logoutUser }
+const getProductsByThirdCategory = async (categoryName, page = 1, limit = 10) => {
+  const Product = require('../models/product-model')
+  const ThirdCategory = require('../models/third-category-model')
+  
+  const thirdCategory = await ThirdCategory.findOne({ name: categoryName })
+  if (!thirdCategory) {
+    throw new Error(`Third category '${categoryName}' not found`)
+  }
+  
+  const pageNum = parseInt(page) || 1
+  const limitNum = Math.min(parseInt(limit) || 10, 50)
+  const skip = (pageNum - 1) * limitNum
+  
+  const products = await Product.find({ thirdCategory: thirdCategory._id })
+    .skip(skip)
+    .limit(limitNum)
+    .sort({ isFeatured: -1, createdAt: -1 })
+    .populate('mainCategory')
+    .populate('subCategory')
+    .populate('thirdCategory')
+    .populate('additionalCategories')
+    .populate({
+      path: 'customizationSections',
+      populate: {
+        path: 'subSections.addons'
+      }
+    })
+    .populate('addedBy')
+  
+  const total = await Product.countDocuments({ thirdCategory: thirdCategory._id })
+  
+  return {
+    products,
+    category: thirdCategory,
+    pagination: {
+      currentPage: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+      totalProducts: total,
+      hasNext: pageNum < Math.ceil(total / limitNum),
+      hasPrev: pageNum > 1
+    }
+  }
+}
+
+module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, checkPincode, getProductsByCity, refreshAccessToken, logoutUser }

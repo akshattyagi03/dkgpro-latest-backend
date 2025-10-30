@@ -9,6 +9,7 @@ const {
   getProducts, 
   getFeaturedProducts,
   getPremiumProducts,
+  getProductsByThirdCategory,
   checkPincode, 
   getProductsByCity,
   logoutUser 
@@ -46,8 +47,8 @@ const login = async (req, res) => {
 
 const home = async (req, res) => {
   try {
-    const products = await getProducts()
-    res.status(HTTP_STATUS.OK).json({ products })
+    const homeData = await getProducts()
+    res.status(HTTP_STATUS.OK).json(homeData)
   } catch (error) {
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: error.message })
   }
@@ -140,6 +141,17 @@ const premiumProducts = async (req, res) => {
   }
 }
 
+const getProductsByCategoryController = async (req, res) => {
+  try {
+    const { categoryName } = req.params
+    const { page, limit } = req.query
+    const result = await getProductsByThirdCategory(categoryName, page, limit)
+    res.status(HTTP_STATUS.OK).json(result)
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -151,6 +163,7 @@ module.exports = {
   home,
   featuredProducts,
   premiumProducts,
+  getProductsByCategory: getProductsByCategoryController,
   checkPincodeDistrict,
   getProductsByCity: getProductsByCityController,
   logout

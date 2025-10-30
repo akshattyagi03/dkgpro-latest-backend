@@ -15,6 +15,7 @@ const {
   createCategoryHierarchy,
   addAddon,
   createCustomizationSection,
+  getCustomizationSections,
   toggleProductFeatured,
   addVenue,
   getVenues,
@@ -239,6 +240,15 @@ const toggleFeatured = async (req, res) => {
   }
 }
 
+const getAllCustomizationSections = async (req, res) => {
+  try {
+    const sections = await getCustomizationSections()
+    res.status(200).json({ customizationSections: sections })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -256,6 +266,7 @@ module.exports = {
   createCategoryTree,
   createAddon,
   createCustomizationSection: createCustomizationSectionController,
+  getAllCustomizationSections,
   toggleFeatured,
   createVenue,
   getAllVenues,

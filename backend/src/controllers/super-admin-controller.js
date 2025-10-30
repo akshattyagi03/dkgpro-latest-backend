@@ -13,6 +13,7 @@ const {
   getAllVenues,
   updateVenue,
   removeVenue,
+  getAllAdmins,
   logoutSuperAdmin
 } = require('../services/super-admin-services')
 
@@ -137,6 +138,15 @@ const deleteVenue = async (req, res) => {
   }
 }
 
+const getAdmins = async (req, res) => {
+  try {
+    const admins = await getAllAdmins()
+    res.status(200).json({ admins })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 const sendResetOTP = async (req, res) => {
   try {
     const result = await sendSuperAdminPasswordResetOTP(req.body)
@@ -170,5 +180,6 @@ module.exports = {
   getVenues,
   editVenue,
   deleteVenue,
+  getAdmins,
   logout
 }

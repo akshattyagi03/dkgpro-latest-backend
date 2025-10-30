@@ -557,13 +557,20 @@ Base URL: `/superadmins`
 - **Auth:** super-admin cookie
 - **Description:** List all unapproved admin registrations
 
-#### 4. Approve Admin
+#### 4. Get All Admins
+- **Method:** GET
+- **Endpoint:** `/superadmins/admins`
+- **Auth:** super-admin cookie
+- **Description:** Get all admins (approved and pending) without passwords
+- **Success:** 200 OK with admins array
+
+#### 6. Approve Admin
 - **Method:** POST
 - **Endpoint:** `/superadmins/approve-admin/{adminId}`
 - **Auth:** super-admin cookie
 - **Description:** Approve admin registration (enables login)
 
-#### 5. Reject Admin
+#### 7. Reject Admin
 - **Method:** POST
 - **Endpoint:** `/superadmins/reject-admin/{adminId}`
 - **Auth:** super-admin cookie
@@ -571,38 +578,38 @@ Base URL: `/superadmins`
 
 ### Product Management
 
-#### 6. Get All Products
+#### 8. Get All Products
 - **Method:** GET
 - **Endpoint:** `/superadmins/products`
 - **Auth:** super-admin cookie
 - **Description:** View all products from all admins with full population
 - **Success:** 200 OK with complete product data
 
-#### 7. Edit Any Product
+#### 9. Edit Any Product
 - **Method:** PUT
 - **Endpoint:** `/superadmins/edit-product/{productId}`
 - **Auth:** super-admin cookie
 - **Description:** Edit any product regardless of creator
 
-#### 8. Delete Any Product
+#### 10. Delete Any Product
 - **Method:** DELETE
 - **Endpoint:** `/superadmins/delete-product/{productId}`
 - **Auth:** super-admin cookie
 - **Description:** Delete any product from system
 
-#### 9. Get All Venues
+#### 11. Get All Venues
 - **Method:** GET
 - **Endpoint:** `/superadmins/venues`
 - **Auth:** super-admin cookie
 - **Description:** View all venues
 
-#### 10. Edit Venue
+#### 12. Edit Venue
 - **Method:** PUT
 - **Endpoint:** `/superadmins/edit-venue/{venueId}`
 - **Auth:** super-admin cookie
 - **Description:** Edit any venue
 
-#### 11. Delete Venue
+#### 13. Delete Venue
 - **Method:** DELETE
 - **Endpoint:** `/superadmins/delete-venue/{venueId}`
 - **Auth:** super-admin cookie

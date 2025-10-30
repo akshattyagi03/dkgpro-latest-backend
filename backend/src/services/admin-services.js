@@ -90,6 +90,7 @@ const addProducts = async (productData, adminId) => {
   const ThirdCategory = require('../models/third-category-model')
   const AdditionalCategory = require('../models/additional-category-model')
   const CustomizationSection = require('../models/customization-section-model')
+  const { addWatermarkToImages } = require('../utils/watermark-service')
   
   const { name, description, price, mainCategory, subCategory, thirdCategory, additionalCategories, customizationSections, keywords, isFeatured, tier, images, serviceableAreas } = productData
   
@@ -120,6 +121,8 @@ const addProducts = async (productData, adminId) => {
     }
   }
   
+  const watermarkedImages = await addWatermarkToImages(images || [])
+  
   const product = new Product({
     name,
     description,
@@ -132,7 +135,7 @@ const addProducts = async (productData, adminId) => {
     keywords: keywords || [],
     isFeatured: isFeatured || false,
     tier: tier || 'standard',
-    images: images || [],
+    images: watermarkedImages,
     addedBy: adminId,
     serviceableAreas: serviceableAreas || []
   })
@@ -547,6 +550,13 @@ const toggleProductFeatured = async (productId, adminId, featuredData) => {
   return product
 }
 
+const getCustomizationSections = async () => {
+  const CustomizationSection = require('../models/customization-section-model')
+  const sections = await CustomizationSection.find()
+    .populate('subSections.addons')
+  return sections
+}
+
 module.exports = { 
   sendAdminOTP, 
   verifyAdminOTP, 
@@ -564,6 +574,7 @@ module.exports = {
   createCategoryHierarchy,
   addAddon,
   createCustomizationSection,
+  getCustomizationSections,
   toggleProductFeatured,
   addVenue,
   getVenues,
