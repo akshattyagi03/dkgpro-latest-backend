@@ -315,4 +315,22 @@ const getFeaturedProducts = async () => {
   return products
 }
 
-module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, checkPincode, getProductsByCity, refreshAccessToken, logoutUser }
+const getPremiumProducts = async () => {
+  const Product = require('../models/product-model')
+  const products = await Product.find({ tier: 'premium' })
+    .sort({ isFeatured: -1, createdAt: -1 })
+    .populate('mainCategory')
+    .populate('subCategory')
+    .populate('thirdCategory')
+    .populate('additionalCategories')
+    .populate({
+      path: 'customizationSections',
+      populate: {
+        path: 'subSections.addons'
+      }
+    })
+    .populate('addedBy')
+  return products
+}
+
+module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, checkPincode, getProductsByCity, refreshAccessToken, logoutUser }

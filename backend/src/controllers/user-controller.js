@@ -8,6 +8,7 @@ const {
   loginUser, 
   getProducts, 
   getFeaturedProducts,
+  getPremiumProducts,
   checkPincode, 
   getProductsByCity,
   logoutUser 
@@ -130,6 +131,15 @@ const featuredProducts = async (req, res) => {
   }
 }
 
+const premiumProducts = async (req, res) => {
+  try {
+    const products = await getPremiumProducts()
+    res.status(HTTP_STATUS.OK).json({ products })
+  } catch (error) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -140,6 +150,7 @@ module.exports = {
   login,
   home,
   featuredProducts,
+  premiumProducts,
   checkPincodeDistrict,
   getProductsByCity: getProductsByCityController,
   logout

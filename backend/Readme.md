@@ -186,21 +186,28 @@ Base URL: `/users`
 - **Description:** Get only featured products
 - **Success:** 200 OK with featured products array
 
-### 10. Get Products by City
+### 10. Get Premium Products
+- **Method:** GET
+- **Endpoint:** `/users/premium`
+- **Auth:** none
+- **Description:** Get only premium tier products
+- **Success:** 200 OK with premium products array
+
+### 11. Get Products by City
 - **Method:** GET
 - **Endpoint:** `/users/products/{city}`
 - **Auth:** none
 - **Description:** Get products available in specific city
 - **Success:** 200 OK with filtered products
 
-### 11. Check Pincode
+### 12. Check Pincode
 - **Method:** GET
 - **Endpoint:** `/users/check/{pincode}`
 - **Auth:** none
 - **Description:** Get district name for pincode
 - **Success:** 200 OK `{ "district": "Mumbai" }`
 
-### 12. Logout
+### 13. Logout
 - **Method:** GET
 - **Endpoint:** `/users/logout`
 - **Auth:** user cookie
