@@ -20,6 +20,8 @@ router.post("/addproducts", isAdmin, adminController.addProduct)
 router.get("/products", isAdmin, adminController.getAdminProducts)
 //put isFeatured property for product
 router.put("/toggle-featured/:productId", isAdmin, adminController.toggleFeatured)
+//toggle product tier between premium and standard
+router.put("/toggle-tier/:productId", isAdmin, adminController.toggleTier)
 //get categories
 router.get("/categories", isAdmin, adminController.getAllCategories)
 //get category tree with all categories and altCategories 

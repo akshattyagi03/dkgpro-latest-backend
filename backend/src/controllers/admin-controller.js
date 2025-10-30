@@ -17,6 +17,7 @@ const {
   createCustomizationSection,
   getCustomizationSections,
   toggleProductFeatured,
+  toggleProductTier,
   addVenue,
   getVenues,
   getBlogs, 
@@ -133,6 +134,12 @@ const updateBlog = async (req, res) => {
     const blog = await editBlog(req.params.blogId, req.admin._id, req.body)
     res.status(200).json({ message: 'Blog updated successfully', blog })
   } catch (error) {
+    if (error.message === 'Unauthorized access') {
+      return res.status(403).json({ message: error.message })
+    }
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ message: error.message })
+    }
     res.status(400).json({ message: error.message })
   }
 }
@@ -142,6 +149,12 @@ const removeBlog = async (req, res) => {
     await deleteBlog(req.params.blogId, req.admin._id)
     res.status(200).json({ message: 'Blog deleted successfully' })
   } catch (error) {
+    if (error.message === 'Unauthorized access') {
+      return res.status(403).json({ message: error.message })
+    }
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ message: error.message })
+    }
     res.status(400).json({ message: error.message })
   }
 }
@@ -236,6 +249,27 @@ const toggleFeatured = async (req, res) => {
     const product = await toggleProductFeatured(req.params.productId, req.admin._id, req.body)
     res.status(200).json({ message: 'Product featured status updated', product })
   } catch (error) {
+    if (error.message === 'Unauthorized access') {
+      return res.status(403).json({ message: error.message })
+    }
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ message: error.message })
+    }
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const toggleTier = async (req, res) => {
+  try {
+    const product = await toggleProductTier(req.params.productId, req.admin._id, req.body)
+    res.status(200).json({ message: 'Product tier updated', product })
+  } catch (error) {
+    if (error.message === 'Unauthorized access') {
+      return res.status(403).json({ message: error.message })
+    }
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ message: error.message })
+    }
     res.status(400).json({ message: error.message })
   }
 }
@@ -268,6 +302,7 @@ module.exports = {
   createCustomizationSection: createCustomizationSectionController,
   getAllCustomizationSections,
   toggleFeatured,
+  toggleTier,
   createVenue,
   getAllVenues,
   createNewBlog,

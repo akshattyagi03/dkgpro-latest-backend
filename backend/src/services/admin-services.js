@@ -365,30 +365,38 @@ const getBlogs = async (adminId) => {
 
 const editBlog = async (blogId, adminId, updateData) => {
   const Blog = require('../models/blog-model')
-  const blog = await Blog.findOneAndUpdate(
-    { _id: blogId, author: adminId },
+  
+  const existingBlog = await Blog.findById(blogId)
+  if (!existingBlog) {
+    throw new Error('Blog not found')
+  }
+  
+  if (existingBlog.author.toString() !== adminId.toString()) {
+    throw new Error('Unauthorized access')
+  }
+  
+  const blog = await Blog.findByIdAndUpdate(
+    blogId,
     updateData,
     { new: true }
   )
-  
-  if (!blog) {
-    throw new Error('Blog not found or unauthorized')
-  }
   
   return blog
 }
 
 const deleteBlog = async (blogId, adminId) => {
   const Blog = require('../models/blog-model')
-  const blog = await Blog.findOneAndDelete({
-    _id: blogId,
-    author: adminId
-  })
   
-  if (!blog) {
-    throw new Error('Blog not found or unauthorized')
+  const existingBlog = await Blog.findById(blogId)
+  if (!existingBlog) {
+    throw new Error('Blog not found')
   }
   
+  if (existingBlog.author.toString() !== adminId.toString()) {
+    throw new Error('Unauthorized access')
+  }
+  
+  const blog = await Blog.findByIdAndDelete(blogId)
   return blog
 }
 
@@ -537,15 +545,46 @@ const toggleProductFeatured = async (productId, adminId, featuredData) => {
   const Product = require('../models/product-model')
   const { isFeatured } = featuredData
   
-  const product = await Product.findOneAndUpdate(
-    { _id: productId, addedBy: adminId },
+  const existingProduct = await Product.findById(productId)
+  if (!existingProduct) {
+    throw new Error('Product not found')
+  }
+  
+  if (existingProduct.addedBy.toString() !== adminId.toString()) {
+    throw new Error('Unauthorized access')
+  }
+  
+  const product = await Product.findByIdAndUpdate(
+    productId,
     { isFeatured },
     { new: true }
   )
   
-  if (!product) {
-    throw new Error('Product not found or unauthorized')
+  return product
+}
+
+const toggleProductTier = async (productId, adminId, tierData) => {
+  const Product = require('../models/product-model')
+  const { tier } = tierData
+  
+  if (!['standard', 'premium'].includes(tier)) {
+    throw new Error('Invalid tier. Must be either standard or premium')
   }
+  
+  const existingProduct = await Product.findById(productId)
+  if (!existingProduct) {
+    throw new Error('Product not found')
+  }
+  
+  if (existingProduct.addedBy.toString() !== adminId.toString()) {
+    throw new Error('Unauthorized access')
+  }
+  
+  const product = await Product.findByIdAndUpdate(
+    productId,
+    { tier },
+    { new: true }
+  )
   
   return product
 }
@@ -576,6 +615,7 @@ module.exports = {
   createCustomizationSection,
   getCustomizationSections,
   toggleProductFeatured,
+  toggleProductTier,
   addVenue,
   getVenues,
   getBlogs, 

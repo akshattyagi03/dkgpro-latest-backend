@@ -281,6 +281,7 @@ Base URL: `/admins`
 - **Endpoint:** `/admins/addproducts`
 - **Auth:** admin cookie
 - **Description:** Create new product with categories, addons, and customizations
+- **Note:** Use `/addproducts` not `/products` for creating products
 - **Body:**
 ```json
 {
@@ -323,16 +324,29 @@ Base URL: `/admins`
 ```
 - **Success:** 200 OK with updated product
 
+#### 8. Toggle Product Tier
+- **Method:** PUT
+- **Endpoint:** `/admins/toggle-tier/{productId}`
+- **Auth:** admin cookie
+- **Description:** Toggle product tier between premium and standard
+- **Body:**
+```json
+{
+  "tier": "premium"
+}
+```
+- **Success:** 200 OK with updated product
+
 ### Category Management
 
-#### 6. Get Categories (Hierarchical)
+#### 9. Get Categories (Hierarchical)
 - **Method:** GET
 - **Endpoint:** `/admins/categories`
 - **Auth:** admin cookie
 - **Description:** Get all categories with nested structure
 - **Success:** 200 OK with nested categories
 
-#### 7. Add Main Category
+#### 10. Add Main Category
 - **Method:** POST
 - **Endpoint:** `/admins/addcategory`
 - **Auth:** admin cookie
@@ -344,7 +358,7 @@ Base URL: `/admins`
 }
 ```
 
-#### 8. Add Sub Category
+#### 11. Add Sub Category
 - **Method:** POST
 - **Endpoint:** `/admins/addsubcategory`
 - **Auth:** admin cookie
@@ -357,7 +371,7 @@ Base URL: `/admins`
 }
 ```
 
-#### 9. Add Third Category
+#### 12. Add Third Category
 - **Method:** POST
 - **Endpoint:** `/admins/addthirdcategory`
 - **Auth:** admin cookie
@@ -370,7 +384,7 @@ Base URL: `/admins`
 }
 ```
 
-#### 10. Create Category Hierarchy
+#### 13. Create Category Hierarchy
 - **Method:** POST
 - **Endpoint:** `/admins/create-category-tree`
 - **Auth:** admin cookie
@@ -399,14 +413,14 @@ Base URL: `/admins`
 }
 ```
 
-#### 11. Get Category Tree
+#### 14. Get Category Tree
 - **Method:** GET
 - **Endpoint:** `/admins/category-tree`
 - **Auth:** admin cookie
 - **Description:** Get complete hierarchical category structure
 - **Success:** 200 OK with nested category tree
 
-#### 12. Add Addon
+#### 15. Add Addon
 - **Method:** POST
 - **Endpoint:** `/admins/add-addon`
 - **Auth:** admin cookie
@@ -421,7 +435,7 @@ Base URL: `/admins`
 }
 ```
 
-#### 13. Add Customization Section
+#### 16. Add Customization Section
 - **Method:** POST
 - **Endpoint:** `/admins/add-customization-section`
 - **Auth:** admin cookie
@@ -441,7 +455,7 @@ Base URL: `/admins`
 }
 ```
 
-#### 14. Add Venue
+#### 17. Add Venue
 - **Method:** POST
 - **Endpoint:** `/admins/add-venue`
 - **Auth:** admin cookie
@@ -456,7 +470,7 @@ Base URL: `/admins`
 }
 ```
 
-#### 15. Get Venues
+#### 18. Get Venues
 - **Method:** GET
 - **Endpoint:** `/admins/venues`
 - **Auth:** admin cookie
@@ -465,7 +479,7 @@ Base URL: `/admins`
 
 ### Blog Management
 
-#### 10. Create Blog
+#### 19. Create Blog
 - **Method:** POST
 - **Endpoint:** `/admins/create-blog`
 - **Auth:** admin cookie
@@ -479,25 +493,25 @@ Base URL: `/admins`
 }
 ```
 
-#### 11. Get Admin Blogs
+#### 20. Get Admin Blogs
 - **Method:** GET
 - **Endpoint:** `/admins/blogs`
 - **Auth:** admin cookie
 - **Description:** Get blogs created by authenticated admin
 
-#### 12. Edit Blog
+#### 21. Edit Blog
 - **Method:** PUT
 - **Endpoint:** `/admins/edit-blog/{blogId}`
 - **Auth:** admin cookie
 - **Body:** Same as create blog (partial updates allowed)
 
-#### 13. Delete Blog
+#### 22. Delete Blog
 - **Method:** DELETE
 - **Endpoint:** `/admins/delete-blog/{blogId}`
 - **Auth:** admin cookie
 - **Description:** Delete admin's own blog
 
-#### 14. Logout
+#### 23. Logout
 - **Method:** GET
 - **Endpoint:** `/admins/logout`
 - **Auth:** admin cookie
@@ -694,3 +708,4 @@ Use tools like Postman or Thunder Client. Remember:
 3. Admin accounts need super-admin approval before login
 4. Create categories before adding products
 5. Use actual ObjectIds from database responses
+6. Use `/addproducts` endpoint for creating products, not `/products`
