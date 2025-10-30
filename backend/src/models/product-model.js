@@ -69,7 +69,48 @@ const productSchema = new mongoose.Schema({
     type: String,
     enum: ['standard', 'premium'],
     default: 'standard'
-  }
+  },
+  // Optional fields
+  location: {
+    type: String,
+    trim: true
+  },
+  setupDuration: {
+    type: String,
+    trim: true
+  },
+  teamSize: {
+    type: String,
+    trim: true
+  },
+  advanceBooking: {
+    type: String,
+    trim: true
+  },
+  cancellationPolicy: {
+    type: String,
+    trim: true
+  },
+  youtubeVideoLink: {
+    type: String,
+    trim: true
+  },
+  // Mandatory fields
+  inclusions: [{
+    type: String,
+    required: true,
+    trim: true
+  }],
+  experiences: [{
+    type: String,
+    required: true,
+    trim: true
+  }],
+  keyHighlights: [{
+    type: String,
+    required: true,
+    trim: true
+  }]
 }, {
   timestamps: true
 })

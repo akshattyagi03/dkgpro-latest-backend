@@ -650,6 +650,9 @@ Products include:
 - Service areas (cities with their serviceable districts)
 - Images array
 - Creator admin reference
+- **New fields:**
+  - Optional: location, setupDuration, teamSize, advanceBooking, cancellationPolicy, youtubeVideoLink
+  - Mandatory: inclusions (array), experiences (array), keyHighlights (array)
 
 ## Error handling & status codes
 - **200 OK** — successful GET/PUT/POST
@@ -689,6 +692,13 @@ Products include:
 - SMS OTP via Twilio
 - Login existing users or register new users
 - Automatic user creation with phone verification
+
+### Cities and Districts Data
+- JSON file with hierarchical city-district mapping
+- Special handling for Delhi NCR (metro → sub-cities → districts)
+- Regular cities have direct city → districts mapping
+- Located at: `/src/utils/cities-districts.json`
+- Usage: Delhi NCR → Delhi → Shahdara
 
 ## Implementation notes
 - Cookie-based JWT authentication with httpOnly cookies

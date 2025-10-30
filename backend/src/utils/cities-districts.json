@@ -1,0 +1,214 @@
+{
+  "cities": [
+    {
+      "name": "Delhi NCR",
+      "type": "metro",
+      "subCities": [
+        {
+          "name": "Delhi",
+          "districts": [
+            "Central Delhi",
+            "East Delhi",
+            "New Delhi",
+            "North Delhi",
+            "North East Delhi",
+            "North West Delhi",
+            "Shahdara",
+            "South Delhi",
+            "South East Delhi",
+            "South West Delhi",
+            "West Delhi"
+          ]
+        },
+        {
+          "name": "Gurgaon",
+          "districts": [
+            "Gurgaon City",
+            "Manesar",
+            "Sohna",
+            "Pataudi",
+            "Farukh Nagar"
+          ]
+        },
+        {
+          "name": "Noida",
+          "districts": [
+            "Noida Sector 1-50",
+            "Noida Sector 51-100",
+            "Noida Sector 101-150",
+            "Greater Noida",
+            "Noida Extension"
+          ]
+        },
+        {
+          "name": "Faridabad",
+          "districts": [
+            "Faridabad City",
+            "Ballabgarh",
+            "Tigaon",
+            "Palwal"
+          ]
+        },
+        {
+          "name": "Ghaziabad",
+          "districts": [
+            "Ghaziabad City",
+            "Loni",
+            "Muradnagar",
+            "Hapur"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mumbai",
+      "type": "city",
+      "districts": [
+        "Andheri East",
+        "Andheri West",
+        "Bandra East",
+        "Bandra West",
+        "Borivali East",
+        "Borivali West",
+        "Colaba",
+        "Dadar East",
+        "Dadar West",
+        "Fort",
+        "Juhu",
+        "Kandivali East",
+        "Kandivali West",
+        "Lower Parel",
+        "Malad East",
+        "Malad West",
+        "Marine Drive",
+        "Powai",
+        "Santa Cruz East",
+        "Santa Cruz West",
+        "Versova",
+        "Worli"
+      ]
+    },
+    {
+      "name": "Bangalore",
+      "type": "city",
+      "districts": [
+        "Whitefield",
+        "Koramangala",
+        "Indiranagar",
+        "Jayanagar",
+        "BTM Layout",
+        "HSR Layout",
+        "Electronic City",
+        "Marathahalli",
+        "Sarjapur Road",
+        "Bannerghatta Road",
+        "Hebbal",
+        "Yelahanka",
+        "JP Nagar",
+        "Rajajinagar",
+        "Malleshwaram"
+      ]
+    },
+    {
+      "name": "Pune",
+      "type": "city",
+      "districts": [
+        "Aundh",
+        "Baner",
+        "Deccan",
+        "Hinjewadi",
+        "Kharadi",
+        "Koregaon Park",
+        "Magarpatta",
+        "Pimpri",
+        "Pune Camp",
+        "Shivaji Nagar",
+        "Viman Nagar",
+        "Wakad",
+        "Warje"
+      ]
+    },
+    {
+      "name": "Hyderabad",
+      "type": "city",
+      "districts": [
+        "Banjara Hills",
+        "Begumpet",
+        "Gachibowli",
+        "Hitech City",
+        "Jubilee Hills",
+        "Kondapur",
+        "Kukatpally",
+        "Madhapur",
+        "Miyapur",
+        "Secunderabad",
+        "Uppal"
+      ]
+    },
+    {
+      "name": "Chennai",
+      "type": "city",
+      "districts": [
+        "Adyar",
+        "Anna Nagar",
+        "Besant Nagar",
+        "Guindy",
+        "Mylapore",
+        "Nungambakkam",
+        "OMR",
+        "Porur",
+        "T Nagar",
+        "Tambaram",
+        "Velachery"
+      ]
+    },
+    {
+      "name": "Kolkata",
+      "type": "city",
+      "districts": [
+        "Ballygunge",
+        "Behala",
+        "Howrah",
+        "New Town",
+        "Park Street",
+        "Salt Lake",
+        "Tollygunge"
+      ]
+    },
+    {
+      "name": "Ahmedabad",
+      "type": "city",
+      "districts": [
+        "Bopal",
+        "Maninagar",
+        "Naranpura",
+        "Prahlad Nagar",
+        "Satellite",
+        "SG Highway",
+        "Vastrapur"
+      ]
+    },
+    {
+      "name": "Jaipur",
+      "type": "city",
+      "districts": [
+        "Bani Park",
+        "C Scheme",
+        "Malviya Nagar",
+        "Mansarovar",
+        "Pink City",
+        "Vaishali Nagar"
+      ]
+    },
+    {
+      "name": "Lucknow",
+      "type": "city",
+      "districts": [
+        "Gomti Nagar",
+        "Hazratganj",
+        "Indira Nagar",
+        "Mahanagar"
+      ]
+    }
+  ]
+}
