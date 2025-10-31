@@ -3,6 +3,8 @@ const {
   verifyAdminOTP, 
   sendAdminPasswordResetOTP,
   resetAdminPassword,
+  sendAdminPhoneOTP,
+  verifyAdminPhoneLogin,
   loginAdmin, 
   addProducts, 
   createBlog, 
@@ -283,11 +285,31 @@ const getAllCustomizationSections = async (req, res) => {
   }
 }
 
+const sendPhoneOTP = async (req, res) => {
+  try {
+    const result = await sendAdminPhoneOTP(req.body)
+    res.status(200).json(result)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const verifyPhoneLogin = async (req, res) => {
+  try {
+    const result = await verifyAdminPhoneLogin(req.body, res)
+    res.status(200).json(result)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
   sendResetOTP,
   verifyResetPassword,
+  sendPhoneOTP,
+  verifyPhoneLogin,
   login,
   getHome,
   addProduct,

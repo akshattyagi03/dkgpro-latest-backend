@@ -4,6 +4,7 @@ const OTP = require('../models/otp-model')
 const jwt = require('jsonwebtoken')
 const { generateOTP } = require('../utils/otp-generator')
 const { sendOTP } = require('../utils/email-service')
+const { sendSMSOTP } = require('../utils/sms-service')
 
 const generateAdminTokens = async (adminId) => {
   const accessToken = jwt.sign(
@@ -596,11 +597,82 @@ const getCustomizationSections = async () => {
   return sections
 }
 
+const sendAdminPhoneOTP = async (userData) => {
+  let { phoneNumber } = userData
+  
+  if (!phoneNumber.startsWith('+91')) {
+    phoneNumber = `+91${phoneNumber}`
+  }
+  
+  const otp = generateOTP()
+  await OTP.findOneAndDelete({ phoneNumber, userType: 'AdminPhoneLogin' })
+  await new OTP({ phoneNumber, otp, userType: 'AdminPhoneLogin' }).save()
+  await sendSMSOTP(phoneNumber, otp)
+  
+  return { message: 'OTP sent to phone' }
+}
+
+const verifyAdminPhoneLogin = async (userData, res) => {
+  let { phoneNumber, otp, fullName, email, password } = userData
+  
+  if (!phoneNumber.startsWith('+91')) {
+    phoneNumber = `+91${phoneNumber}`
+  }
+  
+  const otpRecord = await OTP.findOne({ phoneNumber, userType: 'AdminPhoneLogin' })
+  
+  if (!otpRecord) {
+    throw new Error('OTP not found')
+  }
+  
+  if (otpRecord.expiresAt < new Date()) {
+    await OTP.findOneAndDelete({ phoneNumber, userType: 'AdminPhoneLogin' })
+    throw new Error('OTP expired')
+  }
+  
+  if (otpRecord.otp !== otp.toString()) {
+    throw new Error('Invalid OTP')
+  }
+  
+  let admin = await Admin.findOne({ phoneNumber })
+  
+  if (!admin) {
+    if (!fullName || !email || !password) {
+      throw new Error('Full name, email and password required for new admin')
+    }
+    admin = new Admin({ 
+      fullName, 
+      email, 
+      phoneNumber
+    })
+    admin.password = password
+    await admin.save()
+    
+    await OTP.findOneAndDelete({ phoneNumber, userType: 'AdminPhoneLogin' })
+    return { message: 'Admin registration submitted. Awaiting super admin approval.' }
+  }
+  
+  if (!admin.isApproved) {
+    throw new Error('Admin account pending approval from super admin')
+  }
+  
+  await OTP.findOneAndDelete({ phoneNumber, userType: 'AdminPhoneLogin' })
+  
+  const { accessToken, refreshToken } = await generateAdminTokens(admin._id)
+  
+  res.cookie('adminAccessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
+  res.cookie('adminRefreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+  
+  return { admin: { id: admin._id, fullName: admin.fullName, email: admin.email, phoneNumber: admin.phoneNumber } }
+}
+
 module.exports = { 
   sendAdminOTP, 
   verifyAdminOTP, 
   sendAdminPasswordResetOTP,
   resetAdminPassword,
+  sendAdminPhoneOTP,
+  verifyAdminPhoneLogin,
   loginAdmin, 
   addProducts, 
   createBlog, 

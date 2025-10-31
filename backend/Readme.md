@@ -251,7 +251,44 @@ Base URL: `/admins`
 ```
 - **Success:** 201 Created (pending approval message)
 
-#### 3. Login Admin
+#### 3. Send Admin Phone OTP
+- **Method:** POST
+- **Endpoint:** `/admins/send-phone-otp`
+- **Auth:** none
+- **Description:** Send OTP to phone for admin registration/login
+- **Body:**
+```json
+{
+  "phoneNumber": "8882123456"
+}
+```
+- **Success:** 200 OK
+
+#### 4. Admin Phone Login/Register
+- **Method:** POST
+- **Endpoint:** `/admins/verify-phone-login`
+- **Auth:** none
+- **Description:** Login existing admin or register new admin with phone OTP
+- **Body (Login):**
+```json
+{
+  "phoneNumber": "8882123456",
+  "otp": "123456"
+}
+```
+- **Body (Register):**
+```json
+{
+  "phoneNumber": "8882123456",
+  "otp": "123456",
+  "fullName": "John Admin",
+  "email": "admin@example.com",
+  "password": "secure123"
+}
+```
+- **Success:** 200 OK (pending approval for new registrations)
+
+#### 5. Login Admin
 - **Method:** POST
 - **Endpoint:** `/admins/login`
 - **Auth:** none (requires approval)
@@ -550,7 +587,37 @@ Base URL: `/superadmins`
 ```
 - **Success:** 201 Created + sets `superAdminAccessToken` and `superAdminRefreshToken` cookies
 
-#### 3. Login Super Admin
+#### 3. Send Super Admin Phone OTP
+- **Method:** POST
+- **Endpoint:** `/superadmins/send-phone-otp`
+- **Auth:** none (development only)
+- **Description:** Send OTP to phone for super admin registration
+- **Body:**
+```json
+{
+  "phoneNumber": "8882123456"
+}
+```
+- **Success:** 200 OK
+
+#### 4. Super Admin Phone Register
+- **Method:** POST
+- **Endpoint:** `/superadmins/verify-phone-login`
+- **Auth:** none (development only)
+- **Description:** Register new super admin with phone OTP
+- **Body:**
+```json
+{
+  "phoneNumber": "8882123456",
+  "otp": "123456",
+  "fullName": "Super Admin",
+  "email": "superadmin@example.com",
+  "password": "supersecure123"
+}
+```
+- **Success:** 201 Created + sets `superAdminAccessToken` and `superAdminRefreshToken` cookies
+
+#### 5. Login Super Admin
 - **Method:** POST
 - **Endpoint:** `/superadmins/login`
 - **Auth:** none
@@ -689,9 +756,11 @@ Products include:
 - Venue details: name, location, images, description
 
 ### Phone Authentication
-- SMS OTP via Twilio
-- Login existing users or register new users
-- Automatic user creation with phone verification
+- SMS OTP via Twilio for users, admins, and super admins
+- Login existing accounts or register new accounts with phone OTP
+- Automatic +91 prefix addition for Indian phone numbers
+- New registrations require fullName, email, and password
+- Admin phone registration still requires super admin approval
 
 ### Cities and Districts Data
 - JSON file with hierarchical city-district mapping

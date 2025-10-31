@@ -3,6 +3,8 @@ const {
   verifySuperAdminOTP, 
   sendSuperAdminPasswordResetOTP,
   resetSuperAdminPassword,
+  sendSuperAdminPhoneOTP,
+  verifySuperAdminPhoneLogin,
   loginSuperAdmin, 
   getPendingAdmins, 
   approveAdmin, 
@@ -147,6 +149,30 @@ const getAdmins = async (req, res) => {
   }
 }
 
+const sendPhoneOTP = async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ message: 'Super admin creation only allowed in development environment' })
+  }
+  try {
+    const result = await sendSuperAdminPhoneOTP(req.body)
+    res.status(200).json(result)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const verifyPhoneLogin = async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ message: 'Super admin creation only allowed in development environment' })
+  }
+  try {
+    const result = await verifySuperAdminPhoneLogin(req.body, res)
+    res.status(201).json(result)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 const sendResetOTP = async (req, res) => {
   try {
     const result = await sendSuperAdminPasswordResetOTP(req.body)
@@ -170,6 +196,8 @@ module.exports = {
   verifyOTP,
   sendResetOTP,
   verifyResetPassword,
+  sendPhoneOTP,
+  verifyPhoneLogin,
   login,
   getPendingAdminRequests,
   approveAdminRequest,

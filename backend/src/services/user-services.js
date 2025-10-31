@@ -291,7 +291,12 @@ const resetPassword = async (userData) => {
 }
 
 const sendPhoneOTP = async (userData) => {
-  const { phoneNumber } = userData
+  let { phoneNumber } = userData
+  
+  // Add +91 prefix if not present
+  if (!phoneNumber.startsWith('+91')) {
+    phoneNumber = `+91${phoneNumber}`
+  }
   
   const otp = generateOTP()
   await OTP.findOneAndDelete({ phoneNumber, userType: 'PhoneLogin' })
@@ -302,7 +307,12 @@ const sendPhoneOTP = async (userData) => {
 }
 
 const verifyPhoneLogin = async (userData, res) => {
-  const { phoneNumber, otp, fullName, email } = userData
+  let { phoneNumber, otp, fullName, email, password } = userData
+  
+  // Add +91 prefix if not present
+  if (!phoneNumber.startsWith('+91')) {
+    phoneNumber = `+91${phoneNumber}`
+  }
   
   const otpRecord = await OTP.findOne({ phoneNumber, userType: 'PhoneLogin' })
   
@@ -322,14 +332,14 @@ const verifyPhoneLogin = async (userData, res) => {
   let user = await User.findOne({ phoneNumber })
   
   if (!user) {
-    if (!fullName || !email) {
-      throw new Error('Full name and email required for new user')
+    if (!fullName || !email || !password) {
+      throw new Error('Full name, email and password required for new user')
     }
     user = new User({ 
       fullName, 
       email, 
       phoneNumber, 
-      password: 'temp123' // temporary password
+      password
     })
     await user.save()
   }

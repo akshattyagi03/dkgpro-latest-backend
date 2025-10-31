@@ -4,6 +4,7 @@ const OTP = require('../models/otp-model')
 const jwt = require('jsonwebtoken')
 const { generateOTP } = require('../utils/otp-generator')
 const { sendOTP } = require('../utils/email-service')
+const { sendSMSOTP } = require('../utils/sms-service')
 
 const generateSuperAdminTokens = async (superAdminId) => {
   const accessToken = jwt.sign(
@@ -281,11 +282,80 @@ const resetSuperAdminPassword = async (superAdminData) => {
   return { message: 'Password reset successfully' }
 }
 
+const sendSuperAdminPhoneOTP = async (superAdminData) => {
+  let { phoneNumber } = superAdminData
+  
+  if (!phoneNumber.startsWith('+91')) {
+    phoneNumber = `+91${phoneNumber}`
+  }
+  
+  const existingSuperAdmin = await SuperAdmin.findOne({ phoneNumber })
+  if (existingSuperAdmin) {
+    throw new Error('Super admin already exists')
+  }
+  
+  const otp = generateOTP()
+  await OTP.findOneAndDelete({ phoneNumber, userType: 'SuperAdminPhoneLogin' })
+  await new OTP({ phoneNumber, otp, userType: 'SuperAdminPhoneLogin' }).save()
+  await sendSMSOTP(phoneNumber, otp)
+  
+  return { message: 'OTP sent to phone' }
+}
+
+const verifySuperAdminPhoneLogin = async (superAdminData, res) => {
+  let { phoneNumber, otp, fullName, email, password } = superAdminData
+  
+  if (!phoneNumber.startsWith('+91')) {
+    phoneNumber = `+91${phoneNumber}`
+  }
+  
+  const otpRecord = await OTP.findOne({ phoneNumber, userType: 'SuperAdminPhoneLogin' })
+  
+  if (!otpRecord) {
+    throw new Error('OTP not found')
+  }
+  
+  if (otpRecord.expiresAt < new Date()) {
+    await OTP.findOneAndDelete({ phoneNumber, userType: 'SuperAdminPhoneLogin' })
+    throw new Error('OTP expired')
+  }
+  
+  if (otpRecord.otp !== otp.toString()) {
+    throw new Error('Invalid OTP')
+  }
+  
+  let superAdmin = await SuperAdmin.findOne({ phoneNumber })
+  
+  if (!superAdmin) {
+    if (!fullName || !email || !password) {
+      throw new Error('Full name, email and password required for new super admin')
+    }
+    superAdmin = new SuperAdmin({ 
+      fullName, 
+      email, 
+      phoneNumber,
+      password
+    })
+    await superAdmin.save()
+  }
+  
+  await OTP.findOneAndDelete({ phoneNumber, userType: 'SuperAdminPhoneLogin' })
+  
+  const { accessToken, refreshToken } = await generateSuperAdminTokens(superAdmin._id)
+  
+  res.cookie('superAdminAccessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
+  res.cookie('superAdminRefreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+  
+  return { superAdmin: { id: superAdmin._id, fullName: superAdmin.fullName, email: superAdmin.email, phoneNumber: superAdmin.phoneNumber } }
+}
+
 module.exports = { 
   sendSuperAdminOTP, 
   verifySuperAdminOTP, 
   sendSuperAdminPasswordResetOTP,
   resetSuperAdminPassword,
+  sendSuperAdminPhoneOTP,
+  verifySuperAdminPhoneLogin,
   loginSuperAdmin, 
   getPendingAdmins, 
   approveAdmin, 

@@ -10,6 +10,10 @@ router.post('/verify-otp', adminController.verifyOTP)
 router.post('/forgot-password', adminController.sendResetOTP)
 //verify otp and reset password
 router.post('/reset-password', adminController.verifyResetPassword)
+//send phone otp for login/registration
+router.post('/send-phone-otp', adminController.sendPhoneOTP)
+//verify phone otp for login/registration
+router.post('/verify-phone-login', adminController.verifyPhoneLogin)
 //login admin
 router.post('/login', adminController.login)
 //home page for admin

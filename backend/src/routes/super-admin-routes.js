@@ -20,6 +20,10 @@ router.post('/verify-otp', (req, res) => {
 router.post('/forgot-password', superAdminController.sendResetOTP)
 //verify otp for reset password
 router.post('/reset-password', superAdminController.verifyResetPassword)
+//send phone otp for registration (dev only)
+router.post('/send-phone-otp', superAdminController.sendPhoneOTP)
+//verify phone otp for registration (dev only)
+router.post('/verify-phone-login', superAdminController.verifyPhoneLogin)
 //login super admin
 router.post('/login', superAdminController.login)
 //get pending admins list
