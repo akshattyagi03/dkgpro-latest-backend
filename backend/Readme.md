@@ -200,7 +200,25 @@ Base URL: `/users`
 - **Description:** Get products available in specific city
 - **Success:** 200 OK with filtered products
 
-### 12. Check Pincode
+### 12. Get Filtered Products
+- **Method:** GET
+- **Endpoint:** `/users/filter`
+- **Auth:** none
+- **Description:** Get products with multiple filter options
+- **Query Parameters:**
+  - `category` - Third category name
+  - `tier` - "standard" or "premium"
+  - `minPrice` - Minimum price
+  - `maxPrice` - Maximum price
+  - `city` - City name (partial match)
+  - `page` - Page number (default: 1)
+  - `limit` - Items per page (default: 10, max: 50)
+  - `sortBy` - Sort field: "price", "createdAt", "isFeatured"
+  - `sortOrder` - "asc" or "desc" (default: "desc")
+- **Example:** `/users/filter?category=Photography&tier=premium&minPrice=10000&maxPrice=50000&city=Mumbai&sortBy=price&sortOrder=asc`
+- **Success:** 200 OK with filtered products and pagination
+
+### 13. Check Pincode
 - **Method:** GET
 - **Endpoint:** `/users/check/{pincode}`
 - **Auth:** none

@@ -434,4 +434,84 @@ const getProductsByThirdCategory = async (categoryName, page = 1, limit = 10) =>
   }
 }
 
-module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, checkPincode, getProductsByCity, refreshAccessToken, logoutUser }
+const getFilteredProducts = async (filters) => {
+  const Product = require('../models/product-model')
+  const ThirdCategory = require('../models/third-category-model')
+  
+  const { category, tier, minPrice, maxPrice, city, page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc' } = filters
+  
+  const query = {}
+  
+  if (category) {
+    const thirdCategory = await ThirdCategory.findOne({ name: category })
+    if (thirdCategory) {
+      query.thirdCategory = thirdCategory._id
+    }
+  }
+  
+  if (tier && ['standard', 'premium'].includes(tier)) {
+    query.tier = tier
+  }
+  
+  if (minPrice || maxPrice) {
+    query.price = {}
+    if (minPrice) query.price.$gte = parseInt(minPrice)
+    if (maxPrice) query.price.$lte = parseInt(maxPrice)
+  }
+  
+  if (city) {
+    query['serviceableAreas.city'] = { $regex: city, $options: 'i' }
+  }
+  
+  const pageNum = parseInt(page) || 1
+  const limitNum = Math.min(parseInt(limit) || 10, 50)
+  const skip = (pageNum - 1) * limitNum
+  
+  const sortOptions = {}
+  const validSortFields = ['price', 'createdAt', 'isFeatured']
+  if (validSortFields.includes(sortBy)) {
+    sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1
+  } else {
+    sortOptions.createdAt = -1
+  }
+  
+  const products = await Product.find(query)
+    .skip(skip)
+    .limit(limitNum)
+    .sort(sortOptions)
+    .populate('mainCategory')
+    .populate('subCategory')
+    .populate('thirdCategory')
+    .populate('additionalCategories')
+    .populate({
+      path: 'customizationSections',
+      populate: {
+        path: 'subSections.addons'
+      }
+    })
+    .populate('addedBy')
+  
+  const total = await Product.countDocuments(query)
+  
+  return {
+    products,
+    filters: {
+      category,
+      tier,
+      minPrice,
+      maxPrice,
+      city,
+      sortBy,
+      sortOrder
+    },
+    pagination: {
+      currentPage: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+      totalProducts: total,
+      hasNext: pageNum < Math.ceil(total / limitNum),
+      hasPrev: pageNum > 1
+    }
+  }
+}
+
+module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, checkPincode, getProductsByCity, refreshAccessToken, logoutUser }

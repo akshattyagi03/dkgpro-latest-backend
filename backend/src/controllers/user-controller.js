@@ -10,6 +10,7 @@ const {
   getFeaturedProducts,
   getPremiumProducts,
   getProductsByThirdCategory,
+  getFilteredProducts,
   checkPincode, 
   getProductsByCity,
   logoutUser 
@@ -152,6 +153,15 @@ const getProductsByCategoryController = async (req, res) => {
   }
 }
 
+const getFilteredProductsController = async (req, res) => {
+  try {
+    const result = await getFilteredProducts(req.query)
+    res.status(HTTP_STATUS.OK).json(result)
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -164,6 +174,7 @@ module.exports = {
   featuredProducts,
   premiumProducts,
   getProductsByCategory: getProductsByCategoryController,
+  getFilteredProducts: getFilteredProductsController,
   checkPincodeDistrict,
   getProductsByCity: getProductsByCityController,
   logout

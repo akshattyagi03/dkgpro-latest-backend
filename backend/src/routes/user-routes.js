@@ -24,7 +24,9 @@ router.get('/featured', userController.featuredProducts)
 router.get('/premium', userController.premiumProducts)
 //category wise products
 router.get('/category/:categoryName', userController.getProductsByCategory)
-//product availability by pincode
+//filtered products with query parameters
+router.get('/filter', userController.getFilteredProducts)
+//district of provided pincode
 router.get('/check/:pincode', userController.checkPincodeDistrict)
 //all products in a city 
 router.get('/products/:city', userController.getProductsByCity)
