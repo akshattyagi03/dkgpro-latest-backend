@@ -218,14 +218,63 @@ Base URL: `/users`
 - **Example:** `/users/filter?category=Photography&tier=premium&minPrice=10000&maxPrice=50000&city=Mumbai&sortBy=price&sortOrder=asc`
 - **Success:** 200 OK with filtered products and pagination
 
-### 13. Check Pincode
+### 13. Get Product Details
+- **Method:** GET
+- **Endpoint:** `/users/product/{productId}`
+- **Auth:** none
+- **Description:** Get detailed information about a specific product
+- **Success:** 200 OK with complete product details
+
+### 14. Check Pincode
 - **Method:** GET
 - **Endpoint:** `/users/check/{pincode}`
 - **Auth:** none
 - **Description:** Get district name for pincode
 - **Success:** 200 OK `{ "district": "Mumbai" }`
 
-### 13. Logout
+### 15. Get Cart
+- **Method:** GET
+- **Endpoint:** `/users/cart`
+- **Auth:** user cookie
+- **Description:** Get user's shopping cart with all items
+- **Success:** 200 OK with cart items and total
+
+### 16. Add to Cart
+- **Method:** POST
+- **Endpoint:** `/users/add-to-cart?productId={productId}`
+- **Auth:** user cookie
+- **Description:** Add product to cart (increments quantity if already exists)
+- **Success:** 200 OK with updated cart
+
+### 17. Remove from Cart
+- **Method:** DELETE
+- **Endpoint:** `/users/remove-from-cart?productId={productId}`
+- **Auth:** user cookie
+- **Description:** Remove product from cart completely
+- **Success:** 200 OK with updated cart
+
+### 18. Get Wishlist
+- **Method:** GET
+- **Endpoint:** `/users/wishlist`
+- **Auth:** user cookie
+- **Description:** Get user's wishlist with all products
+- **Success:** 200 OK with wishlist products
+
+### 19. Add to Wishlist
+- **Method:** POST
+- **Endpoint:** `/users/add-to-wishlist?productId={productId}`
+- **Auth:** user cookie
+- **Description:** Add product to wishlist (prevents duplicates)
+- **Success:** 200 OK with updated wishlist
+
+### 20. Remove from Wishlist
+- **Method:** DELETE
+- **Endpoint:** `/users/remove-from-wishlist?productId={productId}`
+- **Auth:** user cookie
+- **Description:** Remove product from wishlist
+- **Success:** 200 OK with updated wishlist
+
+### 21. Logout
 - **Method:** GET
 - **Endpoint:** `/users/logout`
 - **Auth:** user cookie

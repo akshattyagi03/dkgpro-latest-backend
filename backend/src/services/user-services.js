@@ -1,12 +1,6 @@
 const User = require('../models/user-model')
 const RefreshToken = require('../models/refresh-token-model')
 const OTP = require('../models/otp-model')
-const MainCategory = require('../models/main-category-model')
-const SubCategory = require('../models/sub-category-model')
-const ThirdCategory = require('../models/third-category-model')
-const AdditionalCategory = require('../models/additional-category-model')
-const CustomizationSection = require('../models/customization-section-model')
-const Addon = require('../models/addon-model')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
 const { generateOTP } = require('../utils/otp-generator')
@@ -514,4 +508,186 @@ const getFilteredProducts = async (filters) => {
   }
 }
 
-module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, checkPincode, getProductsByCity, refreshAccessToken, logoutUser }
+const addToCart = async (userId, productId) => {
+  const Cart = require('../models/cart-model')
+  const Product = require('../models/product-model')
+  
+  const product = await Product.findById(productId)
+  if (!product) {
+    throw new Error('Product not found')
+  }
+  
+  let cart = await Cart.findOne({ user: userId })
+  
+  if (!cart) {
+    cart = new Cart({ user: userId, items: [] })
+  }
+  
+  const existingItem = cart.items.find(item => item.product.toString() === productId)
+  
+  if (existingItem) {
+    existingItem.quantity += 1
+  } else {
+    cart.items.push({ product: productId, quantity: 1 })
+  }
+  
+  cart.totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0)
+  await cart.save()
+  
+  await cart.populate({
+    path: 'items.product',
+    populate: [
+      { path: 'mainCategory' },
+      { path: 'subCategory' },
+      { path: 'thirdCategory' }
+    ]
+  })
+  
+  return cart
+}
+
+const removeFromCart = async (userId, productId) => {
+  const Cart = require('../models/cart-model')
+  
+  const cart = await Cart.findOne({ user: userId })
+  
+  if (!cart) {
+    throw new Error('Cart not found')
+  }
+  
+  cart.items = cart.items.filter(item => item.product.toString() !== productId)
+  cart.totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0)
+  
+  await cart.save()
+  
+  await cart.populate({
+    path: 'items.product',
+    populate: [
+      { path: 'mainCategory' },
+      { path: 'subCategory' },
+      { path: 'thirdCategory' }
+    ]
+  })
+  
+  return cart
+}
+
+const getCart = async (userId) => {
+  const Cart = require('../models/cart-model')
+  const cart = await Cart.findOne({ user: userId }).populate({
+    path: 'items.product',
+    populate: [
+      { path: 'mainCategory' },
+      { path: 'subCategory' },
+      { path: 'thirdCategory' }
+    ]
+  })
+  if (!cart) return { items: [], totalItems: 0 }
+  return cart
+}
+
+const getWishlist = async (userId) => {
+  const Wishlist = require('../models/wishlist-model')
+  const wishlist = await Wishlist.findOne({ user: userId }).populate({
+    path: 'products',
+    populate: [
+      { path: 'mainCategory' },
+      { path: 'subCategory' },
+      { path: 'thirdCategory' }
+    ]
+  })
+  if (!wishlist) return { products: [], totalItems: 0 }
+  return wishlist
+}
+
+const addToWishlist = async (userId, productId) => {
+  const Wishlist = require('../models/wishlist-model')
+  const Product = require('../models/product-model')
+  
+  const product = await Product.findById(productId)
+  if (!product) {
+    throw new Error('Product not found')
+  }
+  
+  let wishlist = await Wishlist.findOne({ user: userId })
+  
+  if (!wishlist) {
+    wishlist = new Wishlist({ user: userId, products: [] })
+  }
+  
+  if (wishlist.products.includes(productId)) {
+    throw new Error('Product already in wishlist')
+  }
+  
+  wishlist.products.push(productId)
+  wishlist.totalItems = wishlist.products.length
+  await wishlist.save()
+  
+  await wishlist.populate({
+    path: 'products',
+    populate: [
+      { path: 'mainCategory' },
+      { path: 'subCategory' },
+      { path: 'thirdCategory' }
+    ]
+  })
+  
+  return wishlist
+}
+
+const removeFromWishlist = async (userId, productId) => {
+  const Wishlist = require('../models/wishlist-model')
+  
+  const wishlist = await Wishlist.findOne({ user: userId })
+  
+  if (!wishlist) {
+    throw new Error('Wishlist not found')
+  }
+  
+  wishlist.products = wishlist.products.filter(id => id.toString() !== productId)
+  wishlist.totalItems = wishlist.products.length
+  
+  await wishlist.save()
+  
+  await wishlist.populate({
+    path: 'products',
+    populate: [
+      { path: 'mainCategory' },
+      { path: 'subCategory' },
+      { path: 'thirdCategory' }
+    ]
+  })
+  
+  return wishlist
+}
+
+const getProductDetails = async (productId) => {
+  const Product = require('../models/product-model')
+  const MainCategory = require('../models/main-category-model')
+  const SubCategory = require('../models/sub-category-model')
+  const ThirdCategory = require('../models/third-category-model')
+  const AdditionalCategory = require('../models/additional-category-model')
+  const CustomizationSection = require('../models/customization-section-model')
+  const Addon = require('../models/addon-model')
+  
+  const product = await Product.findById(productId)
+    .populate('mainCategory')
+    .populate('subCategory')
+    .populate('thirdCategory')
+    .populate('additionalCategories')
+    .populate({
+      path: 'customizationSections',
+      populate: {
+        path: 'subSections.addons'
+      }
+    })
+    .populate('addedBy', 'fullName email')
+  
+  if (!product) {
+    throw new Error('Product not found')
+  }
+  
+  return product
+}
+
+module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser }

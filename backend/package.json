@@ -1,7 +1,7 @@
 {
   "main": "server.js",
   "scripts": {
-    "dev": "nodemon server.js"
+    "dev": "npx nodemon server.js"
   },
   "dependencies": {
     "aws-sdk": "^2.1692.0",

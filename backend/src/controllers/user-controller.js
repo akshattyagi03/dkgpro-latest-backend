@@ -11,9 +11,16 @@ const {
   getPremiumProducts,
   getProductsByThirdCategory,
   getFilteredProducts,
+  getProductDetails,
+  addToCart,
+  removeFromCart,
+  getWishlist,
+  addToWishlist,
+  removeFromWishlist,
   checkPincode, 
   getProductsByCity,
-  logoutUser 
+  logoutUser,
+  getCart
 } = require('../services/user-services')
 const { HTTP_STATUS } = require('../utils/constants')
 
@@ -162,6 +169,73 @@ const getFilteredProductsController = async (req, res) => {
   }
 }
 
+const getProductDetailsController = async (req, res) => {
+  try {
+    const product = await getProductDetails(req.params.productId)
+    res.status(HTTP_STATUS.OK).json(product)
+  } catch (error) {
+    res.status(HTTP_STATUS.NOT_FOUND).json({ message: error.message })
+  }
+}
+
+const getCartController = async (req, res) => {
+  try {
+    const cart = await getCart(req.user._id)
+    res.status(HTTP_STATUS.OK).json(cart)
+  } catch (error) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: error.message })
+  }
+}
+
+const addToCartController = async (req, res) => {
+  try {
+    const { productId } = req.query
+    const cart = await addToCart(req.user._id, productId)
+    res.status(HTTP_STATUS.OK).json({ message: 'Product added to cart', cart })
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
+const removeFromCartController = async (req, res) => {
+  try {
+    const { productId } = req.query
+    const cart = await removeFromCart(req.user._id, productId)
+    res.status(HTTP_STATUS.OK).json({ message: 'Product removed from cart', cart })
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
+const getWishlistController = async (req, res) => {
+  try {
+    const wishlist = await getWishlist(req.user._id)
+    res.status(HTTP_STATUS.OK).json(wishlist)
+  } catch (error) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: error.message })
+  }
+}
+
+const addToWishlistController = async (req, res) => {
+  try {
+    const { productId } = req.query
+    const wishlist = await addToWishlist(req.user._id, productId)
+    res.status(HTTP_STATUS.OK).json({ message: 'Product added to wishlist', wishlist })
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
+const removeFromWishlistController = async (req, res) => {
+  try {
+    const { productId } = req.query
+    const wishlist = await removeFromWishlist(req.user._id, productId)
+    res.status(HTTP_STATUS.OK).json({ message: 'Product removed from wishlist', wishlist })
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -175,7 +249,14 @@ module.exports = {
   premiumProducts,
   getProductsByCategory: getProductsByCategoryController,
   getFilteredProducts: getFilteredProductsController,
+  getProductDetails: getProductDetailsController,
   checkPincodeDistrict,
   getProductsByCity: getProductsByCityController,
+  getCart: getCartController,
+  addToCart: addToCartController,
+  removeFromCart: removeFromCartController,
+  getWishlist: getWishlistController,
+  addToWishlist: addToWishlistController,
+  removeFromWishlist: removeFromWishlistController,
   logout
 }
