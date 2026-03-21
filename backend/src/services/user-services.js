@@ -90,6 +90,12 @@ const loginUser = async (userData, res) => {
 
 const getProducts = async () => {
   const Product = require('../models/product-model')
+  const MainCategory = require('../models/main-category-model')
+  const SubCategory = require('../models/sub-category-model')
+  const ThirdCategory = require('../models/third-category-model')
+  const AdditionalCategory = require('../models/additional-category-model')
+  const CustomizationSection = require('../models/customization-section-model')
+  const Addon = require('../models/addon-model')
   
   const featuredProducts = await Product.find({ isFeatured: true })
     .limit(6)
@@ -186,6 +192,13 @@ const refreshAccessToken = async (refreshTokenValue) => {
 
 const getProductsByCity = async (city, page = 1, limit = 10) => {
   const Product = require('../models/product-model')
+  const MainCategory = require('../models/main-category-model')
+  const SubCategory = require('../models/sub-category-model')
+  const ThirdCategory = require('../models/third-category-model')
+  const AdditionalCategory = require('../models/additional-category-model')
+  const CustomizationSection = require('../models/customization-section-model')
+  const Addon = require('../models/addon-model')
+  
   const pageNum = parseInt(page) || 1
   const limitNum = Math.min(parseInt(limit) || 10, 50)
   const skip = (pageNum - 1) * limitNum
@@ -350,6 +363,13 @@ const verifyPhoneLogin = async (userData, res) => {
 
 const getFeaturedProducts = async () => {
   const Product = require('../models/product-model')
+  const MainCategory = require('../models/main-category-model')
+  const SubCategory = require('../models/sub-category-model')
+  const ThirdCategory = require('../models/third-category-model')
+  const AdditionalCategory = require('../models/additional-category-model')
+  const CustomizationSection = require('../models/customization-section-model')
+  const Addon = require('../models/addon-model')
+  
   const products = await Product.find({ isFeatured: true })
     .sort({ createdAt: -1 })
     .populate('mainCategory')
@@ -368,6 +388,13 @@ const getFeaturedProducts = async () => {
 
 const getPremiumProducts = async () => {
   const Product = require('../models/product-model')
+  const MainCategory = require('../models/main-category-model')
+  const SubCategory = require('../models/sub-category-model')
+  const ThirdCategory = require('../models/third-category-model')
+  const AdditionalCategory = require('../models/additional-category-model')
+  const CustomizationSection = require('../models/customization-section-model')
+  const Addon = require('../models/addon-model')
+  
   const products = await Product.find({ tier: 'premium' })
     .sort({ isFeatured: -1, createdAt: -1 })
     .populate('mainCategory')
