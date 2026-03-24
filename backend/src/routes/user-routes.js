@@ -46,5 +46,9 @@ router.get('/wishlist', isLoggedIn, userController.getWishlist)
 router.post('/add-to-wishlist', isLoggedIn, userController.addToWishlist)
 //remove from wishlist
 router.delete('/remove-from-wishlist', isLoggedIn, userController.removeFromWishlist)
+//all main categories
+router.get('/main-categories', userController.getAllMainCategories)
+//birthday packages grouped by city
+router.get('/birthday-packages-by-city', userController.getBirthdayPackagesByCity)
 
 module.exports = router

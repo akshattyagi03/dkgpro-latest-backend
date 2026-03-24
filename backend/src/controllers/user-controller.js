@@ -20,7 +20,9 @@ const {
   checkPincode, 
   getProductsByCity,
   logoutUser,
-  getCart
+  getCart,
+  getBirthdayPackagesByCity,
+  getAllMainCategories
 } = require('../services/user-services')
 const { HTTP_STATUS } = require('../utils/constants')
 
@@ -236,6 +238,24 @@ const removeFromWishlistController = async (req, res) => {
   }
 }
 
+const getAllMainCategoriesController = async (req, res) => {
+  try {
+    const categories = await getAllMainCategories()
+    res.status(HTTP_STATUS.OK).json(categories)
+  } catch (error) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: error.message })
+  }
+}
+
+const getBirthdayPackagesByCityController = async (req, res) => {
+  try {
+    const result = await getBirthdayPackagesByCity()
+    res.status(HTTP_STATUS.OK).json(result)
+  } catch (error) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -258,5 +278,7 @@ module.exports = {
   getWishlist: getWishlistController,
   addToWishlist: addToWishlistController,
   removeFromWishlist: removeFromWishlistController,
-  logout
+  logout,
+  getBirthdayPackagesByCity: getBirthdayPackagesByCityController,
+  getAllMainCategories: getAllMainCategoriesController
 }

@@ -717,4 +717,69 @@ const getProductDetails = async (productId) => {
   return product
 }
 
-module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser }
+const getAllMainCategories = async () => {
+  const MainCategory = require('../models/main-category-model')
+  const AdditionalCategory = require('../models/additional-category-model')
+
+  const mainCategories = await MainCategory.find()
+    .populate({
+      path: 'subCategories',
+      populate: { path: 'thirdCategories', model: 'ThirdCategory' }
+    })
+    .sort({ name: 1 })
+    .lean()
+
+  const thirdCategoryIds = mainCategories
+    .flatMap(m => m.subCategories)
+    .flatMap(s => s.thirdCategories)
+    .map(t => t._id)
+
+  const additionalCategories = await AdditionalCategory.find({
+    parentCategory: { $in: thirdCategoryIds },
+    parentModel: 'ThirdCategory'
+  }).lean()
+
+  const additionalMap = {}
+  additionalCategories.forEach(ac => {
+    const key = ac.parentCategory.toString()
+    if (!additionalMap[key]) additionalMap[key] = []
+    additionalMap[key].push(ac)
+  })
+
+  mainCategories.forEach(m => {
+    m.subCategories.forEach(s => {
+      s.thirdCategories.forEach(t => {
+        t.additionalCategories = additionalMap[t._id.toString()] || []
+      })
+    })
+  })
+
+  return mainCategories
+}
+
+const getBirthdayPackagesByCity = async () => {
+  const Product = require('../models/product-model')
+  const ThirdCategory = require('../models/third-category-model')
+
+  const birthdayCategories = await ThirdCategory.find({ name: { $regex: 'birthday', $options: 'i' } })
+  const birthdayCategoryIds = birthdayCategories.map(c => c._id)
+
+  const results = await Product.aggregate([
+    { $match: { thirdCategory: { $in: birthdayCategoryIds } } },
+    { $unwind: '$serviceableAreas' },
+    {
+      $group: {
+        _id: '$serviceableAreas.city',
+        products: { $push: '$$ROOT' }
+      }
+    },
+    { $project: { _id: 0, city: '$_id', products: 1 } },
+    { $sort: { city: 1 } }
+  ])
+
+  await Product.populate(results.flatMap(r => r.products), { path: 'thirdCategory' })
+
+  return results
+}
+
+module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories }
