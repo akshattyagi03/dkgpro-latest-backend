@@ -23,7 +23,8 @@ const {
   getCart,
   getBirthdayPackagesByCity,
   getAllMainCategories,
-  trackProductInterest
+  trackProductInterest,
+  raiseInquiry
 } = require('../services/user-services')
 const { HTTP_STATUS } = require('../utils/constants')
 
@@ -266,6 +267,15 @@ const trackInterestController = async (req, res) => {
   }
 }
 
+const raiseInquiryController = async (req, res) => {
+  try {
+    const inquiry = await raiseInquiry(req.body)
+    res.status(HTTP_STATUS.CREATED).json({ message: 'Inquiry raised successfully', inquiry })
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -291,5 +301,6 @@ module.exports = {
   logout,
   getBirthdayPackagesByCity: getBirthdayPackagesByCityController,
   getAllMainCategories: getAllMainCategoriesController,
-  trackInterest: trackInterestController
+  trackInterest: trackInterestController,
+  raiseInquiry: raiseInquiryController
 }

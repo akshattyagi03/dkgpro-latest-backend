@@ -16,6 +16,7 @@ const {
   updateVenue,
   removeVenue,
   getAllAdmins,
+  getAllInquiries,
   logoutSuperAdmin
 } = require('../services/super-admin-services')
 
@@ -191,6 +192,15 @@ const verifyResetPassword = async (req, res) => {
   }
 }
 
+const getInquiries = async (req, res) => {
+  try {
+    const inquiries = await getAllInquiries()
+    res.status(200).json({ inquiries })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -209,5 +219,6 @@ module.exports = {
   editVenue,
   deleteVenue,
   getAdmins,
+  getInquiries,
   logout
 }

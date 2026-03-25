@@ -46,6 +46,8 @@ router.get("/venues", isSuperAdmin, superAdminController.getVenues)
 router.put("/edit-venue/:venueId", isSuperAdmin, superAdminController.editVenue)
 //delete venue
 router.delete("/delete-venue/:venueId", isSuperAdmin, superAdminController.deleteVenue)
+//get all inquiries
+router.get("/inquiries", isSuperAdmin, superAdminController.getInquiries)
 //logout super admin
 router.get("/logout", isSuperAdmin, superAdminController.logout)
 

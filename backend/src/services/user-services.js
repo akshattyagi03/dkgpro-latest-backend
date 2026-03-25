@@ -798,4 +798,13 @@ const getBirthdayPackagesByCity = async () => {
   return results
 }
 
-module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest }
+const raiseInquiry = async (inquiryData) => {
+  const Inquiry = require('../models/inquiry-model')
+  const { fullName, mobileNo, eventType, startDate, endDate, startTime, endTime, guests, requirements, venue } = inquiryData
+
+  const inquiry = new Inquiry({ fullName, mobileNo, eventType, startDate, endDate, startTime, endTime, guests, requirements, venue })
+  await inquiry.save()
+  return inquiry
+}
+
+module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry }

@@ -348,6 +348,11 @@ const verifySuperAdminPhoneLogin = async (superAdminData, res) => {
   return { superAdmin: { id: superAdmin._id, fullName: superAdmin.fullName, email: superAdmin.email, phoneNumber: superAdmin.phoneNumber } }
 }
 
+const getAllInquiries = async () => {
+  const Inquiry = require('../models/inquiry-model')
+  return await Inquiry.find().populate('venue').sort({ createdAt: -1 })
+}
+
 module.exports = { 
   sendSuperAdminOTP, 
   verifySuperAdminOTP, 
@@ -366,6 +371,7 @@ module.exports = {
   updateVenue,
   removeVenue,
   getAllAdmins,
+  getAllInquiries,
   refreshSuperAdminAccessToken,
   logoutSuperAdmin
 }

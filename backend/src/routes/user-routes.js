@@ -46,6 +46,8 @@ router.get('/wishlist', isLoggedIn, userController.getWishlist)
 router.post('/add-to-wishlist', isLoggedIn, userController.addToWishlist)
 //remove from wishlist
 router.delete('/remove-from-wishlist', isLoggedIn, userController.removeFromWishlist)
+//raise an enquiry
+router.post('/raise-inquiry', userController.raiseInquiry)
 //track product interest
 router.post('/track-interest/:productId', isLoggedIn, userController.trackInterest)
 //all main categories
