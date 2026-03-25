@@ -143,7 +143,6 @@ const addProducts = async (productData, adminId) => {
     thirdCategory: thirdCat._id,
     additionalCategories: additionalCatIds,
     customizationSections: customizationSectionIds,
-    keywords: keywords || [],
     isFeatured: isFeatured || false,
     tier: tier || 'standard',
     images: watermarkedImages,
@@ -444,15 +443,27 @@ const logoutAdmin = async (refreshTokenValue) => {
 
 const addVenue = async (venueData, adminId) => {
   const Venue = require('../models/venue-model')
-  const { name, location, images, description } = venueData
-  
+  const {
+    name, location, images, description, capacity,
+    startingPrice, typesOfVenues, accessibilityFeatures,
+    facilities, restrictions, otherInformation, supportedEvents
+  } = venueData
+
   const venue = new Venue({
     name,
     location,
     images: images || [],
-    description
+    description,
+    capacity,
+    startingPrice,
+    typesOfVenues: typesOfVenues || [],
+    accessibilityFeatures: accessibilityFeatures || [],
+    facilities: facilities || [],
+    restrictions: restrictions || [],
+    otherInformation,
+    supportedEvents: supportedEvents || []
   })
-  
+
   await venue.save()
   return venue
 }
