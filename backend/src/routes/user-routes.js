@@ -46,6 +46,8 @@ router.get('/wishlist', isLoggedIn, userController.getWishlist)
 router.post('/add-to-wishlist', isLoggedIn, userController.addToWishlist)
 //remove from wishlist
 router.delete('/remove-from-wishlist', isLoggedIn, userController.removeFromWishlist)
+//track product interest
+router.post('/track-interest/:productId', isLoggedIn, userController.trackInterest)
 //all main categories
 router.get('/main-categories', userController.getAllMainCategories)
 //birthday packages grouped by city

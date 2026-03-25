@@ -22,7 +22,8 @@ const {
   logoutUser,
   getCart,
   getBirthdayPackagesByCity,
-  getAllMainCategories
+  getAllMainCategories,
+  trackProductInterest
 } = require('../services/user-services')
 const { HTTP_STATUS } = require('../utils/constants')
 
@@ -256,6 +257,15 @@ const getBirthdayPackagesByCityController = async (req, res) => {
   }
 }
 
+const trackInterestController = async (req, res) => {
+  try {
+    await trackProductInterest(req.user._id, req.params.productId)
+    res.status(HTTP_STATUS.OK).json({ message: 'Interest tracked' })
+  } catch (error) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -280,5 +290,6 @@ module.exports = {
   removeFromWishlist: removeFromWishlistController,
   logout,
   getBirthdayPackagesByCity: getBirthdayPackagesByCityController,
-  getAllMainCategories: getAllMainCategoriesController
+  getAllMainCategories: getAllMainCategoriesController,
+  trackInterest: trackInterestController
 }

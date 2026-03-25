@@ -57,10 +57,6 @@ const productSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'CustomizationSection'
   }],
-  keywords: [{
-    type: String,
-    trim: true
-  }],
   isFeatured: {
     type: Boolean,
     default: false
@@ -109,6 +105,20 @@ const productSchema = new mongoose.Schema({
   keyHighlights: [{
     type: String,
     required: true,
+    trim: true
+  }],
+  addons: [{
+    addon: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Addon'
+    },
+    isDefault: {
+      type: Boolean,
+      default: false
+    }
+  }],
+  tags: [{
+    type: String,
     trim: true
   }]
 }, {

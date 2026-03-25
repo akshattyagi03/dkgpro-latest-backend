@@ -106,10 +106,9 @@ const getProducts = async () => {
     .populate('additionalCategories')
     .populate({
       path: 'customizationSections',
-      populate: {
-        path: 'subSections.addons'
-      }
+      populate: { path: 'subSections.addons' }
     })
+    .populate('addons.addon')
     .populate('addedBy')
   
   const featuredIds = featuredProducts.map(p => p._id)
@@ -126,10 +125,9 @@ const getProducts = async () => {
     .populate('additionalCategories')
     .populate({
       path: 'customizationSections',
-      populate: {
-        path: 'subSections.addons'
-      }
+      populate: { path: 'subSections.addons' }
     })
+    .populate('addons.addon')
     .populate('addedBy')
   
   const premiumIds = premiumProducts.map(p => p._id)
@@ -144,10 +142,9 @@ const getProducts = async () => {
     .populate('additionalCategories')
     .populate({
       path: 'customizationSections',
-      populate: {
-        path: 'subSections.addons'
-      }
+      populate: { path: 'subSections.addons' }
     })
+    .populate('addons.addon')
     .populate('addedBy')
   
   return {
@@ -211,10 +208,9 @@ const getProductsByCity = async (city, page = 1, limit = 10) => {
     .populate('additionalCategories')
     .populate({
       path: 'customizationSections',
-      populate: {
-        path: 'subSections.addons'
-      }
+      populate: { path: 'subSections.addons' }
     })
+    .populate('addons.addon')
   const total = await Product.countDocuments(query)
   const categories = {}
   products.forEach(product => {
@@ -378,10 +374,9 @@ const getFeaturedProducts = async () => {
     .populate('additionalCategories')
     .populate({
       path: 'customizationSections',
-      populate: {
-        path: 'subSections.addons'
-      }
+      populate: { path: 'subSections.addons' }
     })
+    .populate('addons.addon')
     .populate('addedBy')
   return products
 }
@@ -403,10 +398,9 @@ const getPremiumProducts = async () => {
     .populate('additionalCategories')
     .populate({
       path: 'customizationSections',
-      populate: {
-        path: 'subSections.addons'
-      }
+      populate: { path: 'subSections.addons' }
     })
+    .populate('addons.addon')
     .populate('addedBy')
   return products
 }
@@ -434,10 +428,9 @@ const getProductsByThirdCategory = async (categoryName, page = 1, limit = 10) =>
     .populate('additionalCategories')
     .populate({
       path: 'customizationSections',
-      populate: {
-        path: 'subSections.addons'
-      }
+      populate: { path: 'subSections.addons' }
     })
+    .populate('addons.addon')
     .populate('addedBy')
   
   const total = await Product.countDocuments({ thirdCategory: thirdCategory._id })
@@ -506,10 +499,9 @@ const getFilteredProducts = async (filters) => {
     .populate('additionalCategories')
     .populate({
       path: 'customizationSections',
-      populate: {
-        path: 'subSections.addons'
-      }
+      populate: { path: 'subSections.addons' }
     })
+    .populate('addons.addon')
     .populate('addedBy')
   
   const total = await Product.countDocuments(query)
@@ -704,10 +696,9 @@ const getProductDetails = async (productId) => {
     .populate('additionalCategories')
     .populate({
       path: 'customizationSections',
-      populate: {
-        path: 'subSections.addons'
-      }
+      populate: { path: 'subSections.addons' }
     })
+    .populate('addons.addon')
     .populate('addedBy', 'fullName email')
   
   if (!product) {
@@ -715,6 +706,31 @@ const getProductDetails = async (productId) => {
   }
   
   return product
+}
+
+const trackProductInterest = async (userId, productId) => {
+  const Product = require('../models/product-model')
+  const User = require('../models/user-model')
+  const applyDecay = require('../utils/interestDecay')
+
+  const product = await Product.findById(productId).select('tags')
+  if (!product || !product.tags.length) return
+
+  const user = await User.findById(userId)
+  if (!user) return
+
+  product.tags.forEach(tag => {
+    const existing = user.interests.find(i => i.tag === tag)
+    if (existing) {
+      applyDecay(existing)
+      existing.score += 1
+      existing.lastUpdated = new Date()
+    } else {
+      user.interests.push({ tag, score: 1, lastUpdated: new Date() })
+    }
+  })
+
+  await user.save()
 }
 
 const getAllMainCategories = async () => {
@@ -782,4 +798,4 @@ const getBirthdayPackagesByCity = async () => {
   return results
 }
 
-module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories }
+module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest }

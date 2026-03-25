@@ -1,5 +1,6 @@
 const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
+const applyDecay = require('../utils/interestDecay')
 
 const userSchema = new mongoose.Schema({
   fullName: {
@@ -39,18 +40,40 @@ const userSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  interests: [
+    {
+      tag: {
+        type: String,
+        trim: true
+      },
+      score: {
+        type: Number,
+        default: 1
+      },
+      lastUpdated: {
+        type: Date,
+        default: Date.now
+      }
+    }
+  ]
 })
 
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next()
-  this.password = await bcrypt.hash(this.password, 10)
+userSchema.pre('save', async function (next) {
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(this.password, 10)
+  }
+
+  if (this.interests && this.interests.length > 0) {
+    this.interests.forEach(applyDecay)
+  }
+
   next()
 })
 
-userSchema.methods.comparePassword=async function(password){
-    const isMatch=await bcrypt.compare(password, this.password)
-    return isMatch
+userSchema.methods.comparePassword = async function (password) {
+  const isMatch = await bcrypt.compare(password, this.password)
+  return isMatch
 }
 
 const User = mongoose.model('User', userSchema)

@@ -17,9 +17,30 @@ const addonSchema = new mongoose.Schema({
   },
   image: {
     type: String
-  }
-}, {
-  timestamps: true
-})
+  },
+  category: {
+    type: String,
+    required: true
+  },
+
+  tags: [{
+    type: String
+  }],
+
+  customFields: [
+    {
+      label: String,      
+      key: String,         
+      type: {
+        type: String,
+        enum: ['text', 'textarea', 'number', 'dropdown', 'file']
+      },
+      required: Boolean,
+      maxLength: Number,
+      options: [String]   
+    }
+  ]
+
+}, { timestamps: true })
 
 module.exports = mongoose.model('Addon', addonSchema)

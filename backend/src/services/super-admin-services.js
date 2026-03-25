@@ -131,10 +131,9 @@ const getAllProducts = async () => {
     .populate('additionalCategories')
     .populate({
       path: 'customizationSections',
-      populate: {
-        path: 'subSections.addons'
-      }
+      populate: { path: 'subSections.addons' }
     })
+    .populate('addons.addon')
     .populate('addedBy')
   return products
 }

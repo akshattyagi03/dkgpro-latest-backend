@@ -93,7 +93,7 @@ const addProducts = async (productData, adminId) => {
   const CustomizationSection = require('../models/customization-section-model')
   const { addWatermarkToImages } = require('../utils/watermark-service')
   
-  const { name, description, price, mainCategory, subCategory, thirdCategory, additionalCategories, customizationSections, keywords, isFeatured, tier, images, serviceableAreas } = productData
+  const { name, description, price, mainCategory, subCategory, thirdCategory, additionalCategories, customizationSections, isFeatured, tier, images, serviceableAreas, addons, tags } = productData
   
   const mainCat = await MainCategory.findOne({ name: mainCategory })
   if (!mainCat) throw new Error(`Main category '${mainCategory}' not found`)
@@ -124,6 +124,16 @@ const addProducts = async (productData, adminId) => {
   
   const watermarkedImages = await addWatermarkToImages(images || [])
   
+  const addonEntries = []
+  if (addons && addons.length > 0) {
+    const Addon = require('../models/addon-model')
+    for (const addonItem of addons) {
+      const addon = await Addon.findOne({ name: addonItem.name })
+      if (!addon) throw new Error(`Addon '${addonItem.name}' not found`)
+      addonEntries.push({ addon: addon._id, isDefault: addonItem.isDefault || false })
+    }
+  }
+
   const product = new Product({
     name,
     description,
@@ -138,7 +148,9 @@ const addProducts = async (productData, adminId) => {
     tier: tier || 'standard',
     images: watermarkedImages,
     addedBy: adminId,
-    serviceableAreas: serviceableAreas || []
+    serviceableAreas: serviceableAreas || [],
+    addons: addonEntries,
+    tags: tags || []
   })
   await product.save()
   return product
@@ -169,10 +181,9 @@ const getProducts = async (adminId) => {
     .populate('additionalCategories')
     .populate({
       path: 'customizationSections',
-      populate: {
-        path: 'subSections.addons'
-      }
+      populate: { path: 'subSections.addons' }
     })
+    .populate('addons.addon')
   return products
 }
 
@@ -454,9 +465,9 @@ const getVenues = async () => {
 
 const addAddon = async (addonData) => {
   const Addon = require('../models/addon-model')
-  const { name, description, price, image } = addonData
+  const { name, description, price, image, category, tags, customFields } = addonData
   
-  const addon = new Addon({ name, description, price, image })
+  const addon = new Addon({ name, description, price, image, category, tags: tags || [], customFields: customFields || [] })
   await addon.save()
   return addon
 }
