@@ -798,6 +798,27 @@ const getBirthdayPackagesByCity = async () => {
   return results
 }
 
+const getVenuesForUsers = async (page = 1, limit = 10) => {
+  const Venue = require('../models/venue-model')
+  const pageNum = parseInt(page) || 1
+  const limitNum = Math.min(parseInt(limit) || 10, 50)
+  const skip = (pageNum - 1) * limitNum
+
+  const venues = await Venue.find().select('name description images').skip(skip).limit(limitNum).sort({ createdAt: -1 })
+  const total = await Venue.countDocuments()
+
+  return {
+    venues,
+    pagination: {
+      currentPage: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+      totalVenues: total,
+      hasNext: pageNum < Math.ceil(total / limitNum),
+      hasPrev: pageNum > 1
+    }
+  }
+}
+
 const raiseInquiry = async (inquiryData) => {
   const Inquiry = require('../models/inquiry-model')
   const { fullName, mobileNo, eventType, startDate, endDate, startTime, endTime, guests, requirements, venue } = inquiryData
@@ -807,4 +828,4 @@ const raiseInquiry = async (inquiryData) => {
   return inquiry
 }
 
-module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry }
+module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, getVenuesForUsers }

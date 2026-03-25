@@ -24,7 +24,8 @@ const {
   getBirthdayPackagesByCity,
   getAllMainCategories,
   trackProductInterest,
-  raiseInquiry
+  raiseInquiry,
+  getVenuesForUsers
 } = require('../services/user-services')
 const { HTTP_STATUS } = require('../utils/constants')
 
@@ -267,6 +268,16 @@ const trackInterestController = async (req, res) => {
   }
 }
 
+const getVenuesController = async (req, res) => {
+  try {
+    const { page, limit } = req.query
+    const result = await getVenuesForUsers(page, limit)
+    res.status(HTTP_STATUS.OK).json(result)
+  } catch (error) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: error.message })
+  }
+}
+
 const raiseInquiryController = async (req, res) => {
   try {
     const inquiry = await raiseInquiry(req.body)
@@ -302,5 +313,6 @@ module.exports = {
   getBirthdayPackagesByCity: getBirthdayPackagesByCityController,
   getAllMainCategories: getAllMainCategoriesController,
   trackInterest: trackInterestController,
-  raiseInquiry: raiseInquiryController
+  raiseInquiry: raiseInquiryController,
+  getVenues: getVenuesController
 }
