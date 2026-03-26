@@ -269,8 +269,8 @@ const getCategoryTree = async () => {
 
 const addMainCategory = async (categoryData) => {
   const MainCategory = require('../models/main-category-model')
-  const { name, description } = categoryData
-  const category = new MainCategory({ name, description })
+  const { name} = categoryData
+  const category = new MainCategory({ name})
   await category.save()
   return category
 }

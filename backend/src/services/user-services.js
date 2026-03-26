@@ -735,6 +735,8 @@ const trackProductInterest = async (userId, productId) => {
 
 const getAllMainCategories = async () => {
   const MainCategory = require('../models/main-category-model')
+  const SubCategory = require('../models/sub-category-model')
+  const ThirdCategory = require('../models/third-category-model')
   const AdditionalCategory = require('../models/additional-category-model')
 
   const mainCategories = await MainCategory.find()
