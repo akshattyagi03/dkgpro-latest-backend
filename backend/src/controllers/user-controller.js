@@ -1,3 +1,4 @@
+const reviewModel = require('../models/review-model')
 const {
   sendUserOTP,
   verifyUserOTP,
@@ -201,7 +202,8 @@ const getFilteredProductsController = async (req, res) => {
 const getProductDetailsController = async (req, res) => {
   try {
     const product = await getProductDetails(req.params.productId)
-    res.status(HTTP_STATUS.OK).json(product)
+    const reviews = await reviewModel.find({productId: req.params.productId})
+    res.status(HTTP_STATUS.OK).json(product, reviews)
   } catch (error) {
     res.status(HTTP_STATUS.NOT_FOUND).json({ message: error.message })
   }
