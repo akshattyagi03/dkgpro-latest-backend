@@ -12,7 +12,7 @@ const generateAdminTokens = async (adminId) => {
     process.env.JWT_SECRET_KEY,
     { expiresIn: '15m' }
   )
-  
+
   const refreshTokenValue = require('crypto').randomBytes(64).toString('hex')
   const refreshToken = new RefreshToken({
     token: refreshTokenValue,
@@ -20,49 +20,49 @@ const generateAdminTokens = async (adminId) => {
     userType: 'Admin',
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   })
-  
+
   await refreshToken.save()
   return { accessToken, refreshToken: refreshTokenValue }
 }
 
 const sendAdminOTP = async (adminData) => {
   const { email } = adminData
-  
+
   const existingAdmin = await Admin.findOne({ email })
   if (existingAdmin) {
     throw new Error('Admin already exists')
   }
-  
+
   const otp = generateOTP()
   await OTP.findOneAndDelete({ email, userType: 'Admin' })
   await new OTP({ email, otp, userType: 'Admin' }).save()
   await sendOTP(email, otp, 'Admin')
-  
+
   return { message: 'OTP sent to email' }
 }
 
 const verifyAdminOTP = async (adminData) => {
   const { fullName, email, password, otp } = adminData
-  
+
   const otpRecord = await OTP.findOne({ email, userType: 'Admin' })
-  
+
   if (!otpRecord) {
     throw new Error('OTP not found')
   }
-  
+
   if (otpRecord.expiresAt < new Date()) {
     await OTP.findOneAndDelete({ email, userType: 'Admin' })
     throw new Error('OTP expired')
   }
-  
+
   if (otpRecord.otp !== otp.toString()) {
     throw new Error('Invalid OTP')
   }
-  
+
   const admin = new Admin({ fullName, email, password })
   await admin.save()
   await OTP.findOneAndDelete({ email, userType: 'Admin' })
-  
+
   return { message: 'Admin registration submitted. Awaiting super admin approval.' }
 }
 
@@ -77,10 +77,10 @@ const loginAdmin = async (adminData, res) => {
   }
 
   const { accessToken, refreshToken } = await generateAdminTokens(admin._id)
-  
+
   res.cookie('adminAccessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
   res.cookie('adminRefreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
-  
+
   return { admin: { id: admin._id, fullName: admin.fullName, email } }
 }
 
@@ -107,7 +107,10 @@ const addProducts = async (productData, adminId) => {
     images,
     serviceableAreas,
     cancellationPolicy,
-    tags
+    tags,
+    inclusions,
+    experiences,
+    keyHighlights
   } = productData
 
   const mainCat = await MainCategory.findOne({ name: mainCategory })
@@ -182,8 +185,13 @@ const addProducts = async (productData, adminId) => {
     images: watermarkedImages,
     addedBy: adminId,
     serviceableAreas: serviceableAreas || [],
-    cancellationPolicy: cancellationPolicy || undefined, 
-    tags: tags || []
+    cancellationPolicy: cancellationPolicy || undefined,
+    tags: tags || [],
+
+    // ✅ ADD THESE
+    inclusions: inclusions || [],
+    experiences: experiences || [],
+    keyHighlights: keyHighlights || []
   })
 
   await product.save()
@@ -193,7 +201,7 @@ const addProducts = async (productData, adminId) => {
 const createBlog = async (blogData, adminId) => {
   const Blog = require('../models/blog-model')
   const { title, content, tags, published } = blogData
-  
+
   const blog = new Blog({
     title,
     content,
@@ -201,7 +209,7 @@ const createBlog = async (blogData, adminId) => {
     tags: tags || [],
     published: published || false
   })
-  
+
   await blog.save()
   return blog
 }
@@ -226,12 +234,12 @@ const getCategories = async () => {
   const MainCategory = require('../models/main-category-model')
   const SubCategory = require('../models/sub-category-model')
   const ThirdCategory = require('../models/third-category-model')
-  
+
   const categories = await MainCategory.find()
-  
+
   const categoriesWithSubs = await Promise.all(categories.map(async (mainCat) => {
     const subCategories = await SubCategory.find({ mainCategory: mainCat._id })
-    
+
     const subCategoriesWithThird = await Promise.all(subCategories.map(async (subCat) => {
       const thirdCategories = await ThirdCategory.find({ subCategory: subCat._id })
       return {
@@ -239,13 +247,13 @@ const getCategories = async () => {
         thirdCategories
       }
     }))
-    
+
     return {
       ...mainCat.toObject(),
       subCategories: subCategoriesWithThird
     }
   }))
-  
+
   return categoriesWithSubs
 }
 
@@ -254,26 +262,26 @@ const getCategoryTree = async () => {
   const SubCategory = require('../models/sub-category-model')
   const ThirdCategory = require('../models/third-category-model')
   const AdditionalCategory = require('../models/additional-category-model')
-  
+
   const mainCategories = await MainCategory.find()
-  
+
   const categoryTree = await Promise.all(mainCategories.map(async (mainCat) => {
     const subCategories = await SubCategory.find({ mainCategory: mainCat._id })
-    
+
     const subCategoriesWithChildren = await Promise.all(subCategories.map(async (subCat) => {
       const thirdCategories = await ThirdCategory.find({ subCategory: subCat._id })
-      
+
       const thirdCategoriesWithChildren = await Promise.all(thirdCategories.map(async (thirdCat) => {
-        const additionalCategories = await AdditionalCategory.find({ 
-          parentCategory: thirdCat._id, 
-          parentModel: 'ThirdCategory' 
+        const additionalCategories = await AdditionalCategory.find({
+          parentCategory: thirdCat._id,
+          parentModel: 'ThirdCategory'
         })
-        
+
         const buildAdditionalTree = async (categories) => {
           return await Promise.all(categories.map(async (cat) => {
-            const children = await AdditionalCategory.find({ 
-              parentCategory: cat._id, 
-              parentModel: 'AdditionalCategory' 
+            const children = await AdditionalCategory.find({
+              parentCategory: cat._id,
+              parentModel: 'AdditionalCategory'
             })
             return {
               ...cat.toObject(),
@@ -281,32 +289,32 @@ const getCategoryTree = async () => {
             }
           }))
         }
-        
+
         return {
           ...thirdCat.toObject(),
           additionalCategories: await buildAdditionalTree(additionalCategories)
         }
       }))
-      
+
       return {
         ...subCat.toObject(),
         thirdCategories: thirdCategoriesWithChildren
       }
     }))
-    
+
     return {
       ...mainCat.toObject(),
       subCategories: subCategoriesWithChildren
     }
   }))
-  
+
   return categoryTree
 }
 
 const addMainCategory = async (categoryData) => {
   const MainCategory = require('../models/main-category-model')
-  const { name} = categoryData
-  const category = new MainCategory({ name})
+  const { name } = categoryData
+  const category = new MainCategory({ name })
   await category.save()
   return category
 }
@@ -538,59 +546,59 @@ const getBlogs = async (adminId) => {
 
 const editBlog = async (blogId, adminId, updateData) => {
   const Blog = require('../models/blog-model')
-  
+
   const existingBlog = await Blog.findById(blogId)
   if (!existingBlog) {
     throw new Error('Blog not found')
   }
-  
+
   if (existingBlog.author.toString() !== adminId.toString()) {
     throw new Error('Unauthorized access')
   }
-  
+
   const blog = await Blog.findByIdAndUpdate(
     blogId,
     updateData,
     { new: true }
   )
-  
+
   return blog
 }
 
 const deleteBlog = async (blogId, adminId) => {
   const Blog = require('../models/blog-model')
-  
+
   const existingBlog = await Blog.findById(blogId)
   if (!existingBlog) {
     throw new Error('Blog not found')
   }
-  
+
   if (existingBlog.author.toString() !== adminId.toString()) {
     throw new Error('Unauthorized access')
   }
-  
+
   const blog = await Blog.findByIdAndDelete(blogId)
   return blog
 }
 
 const refreshAdminAccessToken = async (refreshTokenValue) => {
-  const refreshToken = await RefreshToken.findOne({ 
-    token: refreshTokenValue, 
+  const refreshToken = await RefreshToken.findOne({
+    token: refreshTokenValue,
     userType: 'Admin',
     isRevoked: false,
     expiresAt: { $gt: new Date() }
   })
-  
+
   if (!refreshToken) {
     throw new Error('Invalid or expired refresh token')
   }
-  
+
   const accessToken = jwt.sign(
     { adminId: refreshToken.userId },
     process.env.JWT_SECRET_KEY,
     { expiresIn: '15m' }
   )
-  
+
   return { accessToken }
 }
 
@@ -639,7 +647,7 @@ const getVenues = async () => {
 const addAddon = async (addonData) => {
   const Addon = require('../models/addon-model')
   const { name, description, price, image, category, tags, customFields } = addonData
-  
+
   const addon = new Addon({ name, description, price, image, category, tags: tags || [], customFields: customFields || [] })
   await addon.save()
   return addon
@@ -648,97 +656,97 @@ const addAddon = async (addonData) => {
 
 const sendAdminPasswordResetOTP = async (adminData) => {
   const { email } = adminData
-  
+
   const admin = await Admin.findOne({ email })
   if (!admin) {
     throw new Error('Admin not found')
   }
-  
+
   const otp = generateOTP()
   await OTP.findOneAndDelete({ email, userType: 'AdminPasswordReset' })
   await new OTP({ email, otp, userType: 'AdminPasswordReset' }).save()
   await sendOTP(email, otp, 'Admin Password Reset')
-  
+
   return { message: 'Password reset OTP sent to email' }
 }
 
 const resetAdminPassword = async (adminData) => {
   const { email, otp, newPassword } = adminData
-  
+
   if (!newPassword) {
     throw new Error('New password is required')
   }
-  
+
   const otpRecord = await OTP.findOne({ email, userType: 'AdminPasswordReset' })
-  
+
   if (!otpRecord) {
     throw new Error('OTP not found')
   }
-  
+
   if (otpRecord.expiresAt < new Date()) {
     await OTP.findOneAndDelete({ email, userType: 'AdminPasswordReset' })
     throw new Error('OTP expired')
   }
-  
+
   if (otpRecord.otp !== otp.toString()) {
     throw new Error('Invalid OTP')
   }
-  
+
   const hashedPassword = await bcrypt.hash(newPassword, 10)
   await Admin.findOneAndUpdate(
     { email },
     { password: hashedPassword }
   )
   await OTP.findOneAndDelete({ email, userType: 'AdminPasswordReset' })
-  
+
   return { message: 'Password reset successfully' }
 }
 
 const toggleProductFeatured = async (productId, adminId, featuredData) => {
   const Product = require('../models/product-model')
   const { isFeatured } = featuredData
-  
+
   const existingProduct = await Product.findById(productId)
   if (!existingProduct) {
     throw new Error('Product not found')
   }
-  
+
   if (existingProduct.addedBy.toString() !== adminId.toString()) {
     throw new Error('Unauthorized access')
   }
-  
+
   const product = await Product.findByIdAndUpdate(
     productId,
     { isFeatured },
     { new: true }
   )
-  
+
   return product
 }
 
 const toggleProductTier = async (productId, adminId, tierData) => {
   const Product = require('../models/product-model')
   const { tier } = tierData
-  
+
   if (!['standard', 'premium'].includes(tier)) {
     throw new Error('Invalid tier. Must be either standard or premium')
   }
-  
+
   const existingProduct = await Product.findById(productId)
   if (!existingProduct) {
     throw new Error('Product not found')
   }
-  
+
   if (existingProduct.addedBy.toString() !== adminId.toString()) {
     throw new Error('Unauthorized access')
   }
-  
+
   const product = await Product.findByIdAndUpdate(
     productId,
     { tier },
     { new: true }
   )
-  
+
   return product
 }
 
@@ -751,89 +759,89 @@ const getCustomizationSections = async () => {
 
 const sendAdminPhoneOTP = async (userData) => {
   let { phoneNumber } = userData
-  
+
   if (!phoneNumber.startsWith('+91')) {
     phoneNumber = `+91${phoneNumber}`
   }
-  
+
   const otp = generateOTP()
   await OTP.findOneAndDelete({ phoneNumber, userType: 'AdminPhoneLogin' })
   await new OTP({ phoneNumber, otp, userType: 'AdminPhoneLogin' }).save()
   await sendSMSOTP(phoneNumber, otp)
-  
+
   return { message: 'OTP sent to phone' }
 }
 
 const verifyAdminPhoneLogin = async (userData, res) => {
   let { phoneNumber, otp, fullName, email, password } = userData
-  
+
   if (!phoneNumber.startsWith('+91')) {
     phoneNumber = `+91${phoneNumber}`
   }
-  
+
   const otpRecord = await OTP.findOne({ phoneNumber, userType: 'AdminPhoneLogin' })
-  
+
   if (!otpRecord) {
     throw new Error('OTP not found')
   }
-  
+
   if (otpRecord.expiresAt < new Date()) {
     await OTP.findOneAndDelete({ phoneNumber, userType: 'AdminPhoneLogin' })
     throw new Error('OTP expired')
   }
-  
+
   if (otpRecord.otp !== otp.toString()) {
     throw new Error('Invalid OTP')
   }
-  
+
   let admin = await Admin.findOne({ phoneNumber })
-  
+
   if (!admin) {
     if (!fullName || !email || !password) {
       throw new Error('Full name, email and password required for new admin')
     }
-    admin = new Admin({ 
-      fullName, 
-      email, 
+    admin = new Admin({
+      fullName,
+      email,
       phoneNumber
     })
     admin.password = password
     await admin.save()
-    
+
     await OTP.findOneAndDelete({ phoneNumber, userType: 'AdminPhoneLogin' })
     return { message: 'Admin registration submitted. Awaiting super admin approval.' }
   }
-  
+
   if (!admin.isApproved) {
     throw new Error('Admin account pending approval from super admin')
   }
-  
+
   await OTP.findOneAndDelete({ phoneNumber, userType: 'AdminPhoneLogin' })
-  
+
   const { accessToken, refreshToken } = await generateAdminTokens(admin._id)
-  
+
   res.cookie('adminAccessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
   res.cookie('adminRefreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
-  
+
   return { admin: { id: admin._id, fullName: admin.fullName, email: admin.email, phoneNumber: admin.phoneNumber } }
 }
 
-module.exports = { 
-  sendAdminOTP, 
-  verifyAdminOTP, 
+module.exports = {
+  sendAdminOTP,
+  verifyAdminOTP,
   sendAdminPasswordResetOTP,
   resetAdminPassword,
   sendAdminPhoneOTP,
   verifyAdminPhoneLogin,
-  loginAdmin, 
-  addProducts, 
-  createBlog, 
-  getProducts, 
-  getCategories, 
+  loginAdmin,
+  addProducts,
+  createBlog,
+  getProducts,
+  getCategories,
   getCategoryTree,
-  addMainCategory, 
-  addSubCategory, 
-  addThirdCategory, 
+  addMainCategory,
+  addSubCategory,
+  addThirdCategory,
   createCategoryHierarchy,
   addAddon,
   getCustomizationSections,
@@ -841,8 +849,8 @@ module.exports = {
   toggleProductTier,
   addVenue,
   getVenues,
-  getBlogs, 
-  editBlog, 
+  getBlogs,
+  editBlog,
   deleteBlog,
   refreshAdminAccessToken,
   logoutAdmin,
