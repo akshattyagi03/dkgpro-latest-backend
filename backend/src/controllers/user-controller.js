@@ -1,12 +1,12 @@
-const { 
-  sendUserOTP, 
-  verifyUserOTP, 
+const {
+  sendUserOTP,
+  verifyUserOTP,
   sendPasswordResetOTP,
   resetPassword,
   sendPhoneOTP,
   verifyPhoneLogin,
-  loginUser, 
-  getProducts, 
+  loginUser,
+  getProducts,
   getFeaturedProducts,
   getPremiumProducts,
   getProductsByThirdCategory,
@@ -17,7 +17,7 @@ const {
   getWishlist,
   addToWishlist,
   removeFromWishlist,
-  checkPincode, 
+  checkPincode,
   getProductsByCity,
   logoutUser,
   getCart,
@@ -25,7 +25,9 @@ const {
   getAllMainCategories,
   trackProductInterest,
   raiseInquiry,
-  getVenuesForUsers
+  getVenuesForUsers,
+  createReview,
+  getProfileService
 } = require('../services/user-services')
 const { HTTP_STATUS } = require('../utils/constants')
 
@@ -47,7 +49,29 @@ const verifyOTP = async (req, res) => {
   }
 }
 
+const getProfile = async (req, res) => {
+  try {
+    const userId = req.user._id;
 
+    if (!userId) {
+      return res.status(401).json({
+        message: 'Unauthorized'
+      });
+    }
+
+    const data = await getProfileService(userId);
+
+    res.status(200).json({
+      message: 'Profile fetched successfully',
+      data
+    });
+
+  } catch (error) {
+    res.status(400).json({
+      message: error.message
+    });
+  }
+};
 
 const login = async (req, res) => {
   try {
@@ -91,7 +115,7 @@ const logout = async (req, res) => {
   try {
     const refreshToken = req.cookies.refreshToken
     await logoutUser(refreshToken)
-    
+
     res.clearCookie('accessToken')
     res.clearCookie('refreshToken')
     res.status(HTTP_STATUS.OK).json({ message: "You are logged out." })
@@ -201,7 +225,29 @@ const addToCartController = async (req, res) => {
     res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
   }
 }
+const writeReview = async (req, res) => {
+  try {
+    const { productId } = req.query;
+    const { reviewText, rating } = req.body;
 
+    const review = await createReview(
+      req.user._id,
+      productId,
+      reviewText,
+      rating
+    );
+
+    res.status(HTTP_STATUS.CREATED).json({
+      message: 'Review submitted successfully',
+      review
+    });
+
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({
+      message: error.message
+    });
+  }
+};
 const removeFromCartController = async (req, res) => {
   try {
     const { productId } = req.query
@@ -314,5 +360,7 @@ module.exports = {
   getAllMainCategories: getAllMainCategoriesController,
   trackInterest: trackInterestController,
   raiseInquiry: raiseInquiryController,
-  getVenues: getVenuesController
+  getVenues: getVenuesController,
+  writeReview,
+  getProfile
 }

@@ -104,6 +104,16 @@ const productSchema = new mongoose.Schema({
     required: true,
     trim: true
   }],
+  averageRating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  numReviews: {
+    type: Number,
+    default: 0
+  },
   customizationSections: [
     {
       name: {

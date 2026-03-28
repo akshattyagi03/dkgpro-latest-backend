@@ -56,5 +56,8 @@ router.post('/track-interest/:productId', isLoggedIn, userController.trackIntere
 router.get('/main-categories', userController.getAllMainCategories)
 //birthday packages grouped by city
 router.get('/birthday-packages-by-city', userController.getBirthdayPackagesByCity)
-
+//write review
+router.post('/write-review', isLoggedIn, userController.writeReview)
+//get profile
+router.get('/profile', isLoggedIn, userController.getProfile)
 module.exports = router

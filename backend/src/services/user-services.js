@@ -87,6 +87,90 @@ const loginUser = async (userData, res) => {
 
   return { user: { id: user._id, fullName: user.fullName, email } }
 }
+const createReview = async (userId, productId, reviewText, rating) => {
+  const Review = require('../models/review-model');
+  const Product = require('../models/product-model');
+  const mongoose = require('mongoose');
+
+  if (!reviewText || !rating) {
+    throw new Error('Review text and rating are required');
+  }
+
+  if (rating < 1 || rating > 5) {
+    throw new Error('Rating must be between 1 and 5');
+  }
+
+  const existingReview = await Review.findOne({
+    user: userId,
+    product: productId,
+  });
+
+  if (existingReview) {
+    throw new Error('You have already reviewed this product');
+  }
+
+  const review = await Review.create({
+    user: userId,
+    product: productId,
+    reviewText,
+    rating,
+  });
+
+  // 🔄 Recalculate average rating
+  const stats = await Review.aggregate([
+    {
+      $match: {
+        product: new mongoose.Types.ObjectId(productId),
+      },
+    },
+    {
+      $group: {
+        _id: '$product',
+        avgRating: { $avg: '$rating' },
+        numReviews: { $sum: 1 },
+      },
+    },
+  ]);
+
+  // ✅ Update product
+  if (stats.length > 0) {
+    await Product.findByIdAndUpdate(productId, {
+      averageRating: stats[0].avgRating,
+      numReviews: stats[0].numReviews,
+    });
+  }
+
+  return review;
+};
+const getProfileService = async (userId) => {
+  const User = require('../models/user-model');
+  const Review = require('../models/review-model');
+
+  // 🔍 Get user with cart & orders
+  const user = await User.findById(userId)
+    .select('-password') // 🔒 never expose password
+    .populate('cart')
+    // .populate({
+    //   path: 'orders',
+    //   options: { sort: { createdAt: -1 } }
+    // })
+    .lean();
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  // ⭐ Get user reviews (optional but powerful)
+  const reviews = await Review.find({ user: userId })
+    .populate('product', 'name images averageRating')
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return {
+    user,
+    reviews
+  };
+};
 
 const getProducts = async () => {
   const Product = require('../models/product-model')
@@ -847,4 +931,4 @@ const raiseInquiry = async (inquiryData) => {
   return inquiry
 }
 
-module.exports = { sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, getVenuesForUsers }
+module.exports = {getProfileService, sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, getVenuesForUsers, createReview }
