@@ -58,5 +58,6 @@ router.put("/edit-blog/:blogId", isAdmin, adminController.updateBlog)
 router.delete("/delete-blog/:blogId", isAdmin, adminController.removeBlog)
 //logout admin
 router.get("/logout", isAdmin, adminController.logout)
-
+//create additional category 
+router.post("/create-additional-category", isAdmin, adminController.createAdditionalCategory)
 module.exports = router

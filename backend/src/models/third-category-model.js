@@ -15,8 +15,6 @@ const thirdCategorySchema = new mongoose.Schema({
     ref: 'SubCategory',
     required: true
   }
-}, {
-  timestamps: true
-})
+}, { timestamps: true })
 
 module.exports = mongoose.model('ThirdCategory', thirdCategorySchema)

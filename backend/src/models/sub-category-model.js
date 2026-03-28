@@ -14,13 +14,7 @@ const subCategorySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'MainCategory',
     required: true
-  },
-  thirdCategories: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'ThirdCategory'
-  }]
-}, {
-  timestamps: true
-})
+  }
+}, { timestamps: true })
 
 module.exports = mongoose.model('SubCategory', subCategorySchema)

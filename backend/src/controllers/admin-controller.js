@@ -25,7 +25,8 @@ const {
   getBlogs, 
   editBlog, 
   deleteBlog,
-  logoutAdmin
+  logoutAdmin,
+  addAdditionalCategory
 } = require('../services/admin-services')
 
 const sendOTP = async (req, res) => {
@@ -237,6 +238,55 @@ const sendResetOTP = async (req, res) => {
   }
 }
 
+const createAdditionalCategory = async (req, res) => {
+  try {
+    const { name, description, parentName, parentModel } = req.body
+
+    if (!name || !parentName || !parentModel) {
+      return res.status(400).json({
+        success: false,
+        message: 'name, parentName and parentModel are required'
+      })
+    }
+
+    if (!['ThirdCategory', 'AdditionalCategory'].includes(parentModel)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid parentModel'
+      })
+    }
+
+    const category = await addAdditionalCategory({
+      name,
+      description,
+      parentName,
+      parentModel
+    })
+
+    return res.status(201).json({
+      success: true,
+      message: 'Additional category created successfully',
+      data: category
+    })
+
+  } catch (error) {
+    console.error(error)
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'Category already exists under this parent'
+      })
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+}
+
+
 const verifyResetPassword = async (req, res) => {
   try {
     const result = await resetAdminPassword(req.body)
@@ -331,5 +381,6 @@ module.exports = {
   getAdminBlogs,
   updateBlog,
   removeBlog,
-  logout
+  logout,
+  createAdditionalCategory
 }

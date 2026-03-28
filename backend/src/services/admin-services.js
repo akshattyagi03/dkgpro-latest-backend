@@ -275,96 +275,222 @@ const addMainCategory = async (categoryData) => {
   return category
 }
 
+const addAdditionalCategory = async (data) => {
+  const ThirdCategory = require('../models/third-category-model')
+  const AdditionalCategory = require('../models/additional-category-model')
+
+  const { name, description, parentName, parentModel } = data
+
+  if (!['ThirdCategory', 'AdditionalCategory'].includes(parentModel)) {
+    throw new Error('Invalid parent model')
+  }
+
+  let parent
+  let parentId
+  let level
+
+  // 🔹 Find parent by name
+  if (parentModel === 'ThirdCategory') {
+    parent = await ThirdCategory.findOne({ name: parentName })
+    if (!parent) throw new Error(`ThirdCategory '${parentName}' not found`)
+
+    parentId = parent._id
+    level = 4
+  }
+
+  if (parentModel === 'AdditionalCategory') {
+    parent = await AdditionalCategory.findOne({ name: parentName })
+    if (!parent) throw new Error(`AdditionalCategory '${parentName}' not found`)
+
+    parentId = parent._id
+    level = parent.level + 1
+  }
+
+  // 🔹 Prevent duplicates (IMPORTANT: include parentModel)
+  const existing = await AdditionalCategory.findOne({
+    name,
+    parentCategory: parentId,
+    parentModel
+  })
+
+  if (existing) return existing
+
+  // 🔹 Create category
+  const newCategory = await AdditionalCategory.create({
+    name,
+    description,
+    parentCategory: parentId,
+    parentModel,
+    level
+  })
+
+  return newCategory
+}
+
 const addSubCategory = async (categoryData) => {
   const SubCategory = require('../models/sub-category-model')
   const MainCategory = require('../models/main-category-model')
+
   const { name, description, mainCategory } = categoryData
-  
+
+  // Find main category
   const mainCat = await MainCategory.findOne({ name: mainCategory })
-  if (!mainCat) throw new Error(`Main category '${mainCategory}' not found`)
-  
-  const subCategory = new SubCategory({ name, description, mainCategory: mainCat._id })
-  await subCategory.save()
-  return subCategory
+  if (!mainCat) {
+    throw new Error(`Main category '${mainCategory}' not found`)
+  }
+
+  // Optional: prevent duplicates under same main category
+  const existing = await SubCategory.findOne({
+    name,
+    mainCategory: mainCat._id
+  })
+  if (existing) {
+    throw new Error(`Sub category '${name}' already exists`)
+  }
+
+  // Create subcategory
+  const subCategoryDoc = await SubCategory.create({
+    name,
+    description,
+    mainCategory: mainCat._id
+  })
+
+  return subCategoryDoc
 }
 
 const addThirdCategory = async (categoryData) => {
   const ThirdCategory = require('../models/third-category-model')
   const SubCategory = require('../models/sub-category-model')
+
   const { name, description, subCategory } = categoryData
-  
+
+  // Find subcategory
   const subCat = await SubCategory.findOne({ name: subCategory })
-  if (!subCat) throw new Error(`Sub category '${subCategory}' not found`)
-  
-  const thirdCategory = new ThirdCategory({ name, description, subCategory: subCat._id })
-  await thirdCategory.save()
-  return thirdCategory
+  if (!subCat) {
+    throw new Error(`Sub category '${subCategory}' not found`)
+  }
+
+  // Optional: prevent duplicates under same subcategory
+  const existing = await ThirdCategory.findOne({
+    name,
+    subCategory: subCat._id
+  })
+  if (existing) {
+    throw new Error(`Third category '${name}' already exists`)
+  }
+
+  // Create third category
+  const thirdCategoryDoc = await ThirdCategory.create({
+    name,
+    description,
+    subCategory: subCat._id
+  })
+
+  return thirdCategoryDoc
 }
 
-const createCategoryHierarchy = async (categoryData) => {
+const createCategoryHierarchy = async (categoryData, retries = 3) => {
+  const mongoose = require('mongoose')
+
   const MainCategory = require('../models/main-category-model')
   const SubCategory = require('../models/sub-category-model')
   const ThirdCategory = require('../models/third-category-model')
   const AdditionalCategory = require('../models/additional-category-model')
-  
-  const { mainCategory, subCategory, thirdCategory, additionalCategories } = categoryData
-  
-  // Create or find main category
-  let mainCat = await MainCategory.findOne({ name: mainCategory.name })
-  if (!mainCat) {
-    mainCat = new MainCategory(mainCategory)
-    await mainCat.save()
-  }
-  
-  // Create or find sub category
-  let subCat = await SubCategory.findOne({ name: subCategory.name, mainCategory: mainCat._id })
-  if (!subCat) {
-    subCat = new SubCategory({ ...subCategory, mainCategory: mainCat._id })
-    await subCat.save()
-  }
-  
-  // Create or find third category
-  let thirdCat = await ThirdCategory.findOne({ name: thirdCategory.name, subCategory: subCat._id })
-  if (!thirdCat) {
-    thirdCat = new ThirdCategory({ ...thirdCategory, subCategory: subCat._id })
-    await thirdCat.save()
-  }
-  
-  // Create additional categories if provided
-  const additionalCats = []
-  if (additionalCategories && additionalCategories.length > 0) {
-    let parentCategory = thirdCat._id
-    let parentModel = 'ThirdCategory'
-    
-    for (let i = 0; i < additionalCategories.length; i++) {
-      const addCatData = additionalCategories[i]
-      let addCat = await AdditionalCategory.findOne({ 
-        name: addCatData.name, 
-        parentCategory, 
-        level: 4 + i 
-      })
-      
-      if (!addCat) {
-        addCat = new AdditionalCategory({
-          ...addCatData,
+
+  const session = await mongoose.startSession()
+
+  try {
+    session.startTransaction()
+
+    const { mainCategory, subCategory, thirdCategory, additionalCategories } = categoryData
+
+    let mainCat = await MainCategory.findOne({ name: mainCategory.name }).session(session)
+    if (!mainCat) {
+      mainCat = (await MainCategory.create([mainCategory], { session }))[0]
+    }
+
+    let subCat = await SubCategory.findOne({
+      name: subCategory.name,
+      mainCategory: mainCat._id
+    }).session(session)
+
+    if (!subCat) {
+      subCat = (await SubCategory.create([{
+        ...subCategory,
+        mainCategory: mainCat._id
+      }], { session }))[0]
+    }
+
+    let thirdCat = await ThirdCategory.findOne({
+      name: thirdCategory.name,
+      subCategory: subCat._id
+    }).session(session)
+
+    if (!thirdCat) {
+      thirdCat = (await ThirdCategory.create([{
+        ...thirdCategory,
+        subCategory: subCat._id
+      }], { session }))[0]
+    }
+
+    const additionalCats = []
+
+    if (additionalCategories?.length) {
+      let parentCategory = thirdCat._id
+      let parentModel = 'ThirdCategory'
+
+      for (let i = 0; i < additionalCategories.length; i++) {
+        const addCatData = additionalCategories[i]
+
+        let addCat = await AdditionalCategory.findOne({
+          name: addCatData.name,
           parentCategory,
           parentModel,
           level: 4 + i
-        })
-        await addCat.save()
+        }).session(session)
+
+        if (!addCat) {
+          addCat = (await AdditionalCategory.create([{
+            ...addCatData,
+            parentCategory,
+            parentModel,
+            level: 4 + i
+          }], { session }))[0]
+        }
+
+        additionalCats.push(addCat)
+        parentCategory = addCat._id
+        parentModel = 'AdditionalCategory'
       }
-      
-      additionalCats.push(addCat)
-      parentCategory = addCat._id
-      parentModel = 'AdditionalCategory'
     }
-  }
-  
-  return {
-    mainCategory: mainCat,
-    subCategory: subCat,
-    thirdCategory: thirdCat,
-    additionalCategories: additionalCats
+
+    await session.commitTransaction()
+    session.endSession()
+
+    return {
+      mainCategory: mainCat,
+      subCategory: subCat,
+      thirdCategory: thirdCat,
+      additionalCategories: additionalCats
+    }
+
+  } catch (error) {
+    await session.abortTransaction()
+    session.endSession()
+
+    // 🔥 Retry logic
+    if (
+      retries > 0 &&
+      (
+        error.errorLabels?.includes('TransientTransactionError') ||
+        error.message.includes('Please retry your operation')
+      )
+    ) {
+      console.log('Retrying transaction...', retries)
+      return createCategoryHierarchy(categoryData, retries - 1)
+    }
+
+    throw error
   }
 }
 
@@ -716,5 +842,6 @@ module.exports = {
   editBlog, 
   deleteBlog,
   refreshAdminAccessToken,
-  logoutAdmin
+  logoutAdmin,
+  addAdditionalCategory
 }

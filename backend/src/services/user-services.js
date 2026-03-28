@@ -739,19 +739,28 @@ const getAllMainCategories = async () => {
   const ThirdCategory = require('../models/third-category-model')
   const AdditionalCategory = require('../models/additional-category-model')
 
+  // 1. Get all main categories
   const mainCategories = await MainCategory.find()
-    .populate({
-      path: 'subCategories',
-      populate: { path: 'thirdCategories', model: 'ThirdCategory' }
-    })
     .sort({ name: 1 })
     .lean()
 
-  const thirdCategoryIds = mainCategories
-    .flatMap(m => m.subCategories)
-    .flatMap(s => s.thirdCategories)
-    .map(t => t._id)
+  const mainCategoryIds = mainCategories.map(m => m._id)
 
+  // 2. Get all subcategories
+  const subCategories = await SubCategory.find({
+    mainCategory: { $in: mainCategoryIds }
+  }).lean()
+
+  const subCategoryIds = subCategories.map(s => s._id)
+
+  // 3. Get all third categories
+  const thirdCategories = await ThirdCategory.find({
+    subCategory: { $in: subCategoryIds }
+  }).lean()
+
+  const thirdCategoryIds = thirdCategories.map(t => t._id)
+
+  // 4. Get all additional categories
   const additionalCategories = await AdditionalCategory.find({
     parentCategory: { $in: thirdCategoryIds },
     parentModel: 'ThirdCategory'
@@ -764,12 +773,34 @@ const getAllMainCategories = async () => {
     additionalMap[key].push(ac)
   })
 
+  thirdCategories.forEach(t => {
+    t.additionalCategories = additionalMap[t._id.toString()] || []
+  })
+
+  // Map third → sub
+  const thirdMap = {}
+  thirdCategories.forEach(t => {
+    const key = t.subCategory.toString()
+    if (!thirdMap[key]) thirdMap[key] = []
+    thirdMap[key].push(t)
+  })
+
+  // Attach thirdCategories to subCategories
+  subCategories.forEach(s => {
+    s.thirdCategories = thirdMap[s._id.toString()] || []
+  })
+
+  // Map sub → main
+  const subMap = {}
+  subCategories.forEach(s => {
+    const key = s.mainCategory.toString()
+    if (!subMap[key]) subMap[key] = []
+    subMap[key].push(s)
+  })
+
+  // Attach subCategories to mainCategories
   mainCategories.forEach(m => {
-    m.subCategories.forEach(s => {
-      s.thirdCategories.forEach(t => {
-        t.additionalCategories = additionalMap[t._id.toString()] || []
-      })
-    })
+    m.subCategories = subMap[m._id.toString()] || []
   })
 
   return mainCategories

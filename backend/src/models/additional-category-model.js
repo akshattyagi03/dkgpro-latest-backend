@@ -26,5 +26,8 @@ const additionalCategorySchema = new mongoose.Schema({
 }, {
   timestamps: true
 })
-
+additionalCategorySchema.index(
+  { name: 1, parentCategory: 1, parentModel: 1 },
+  { unique: true }
+)
 module.exports = mongoose.model('AdditionalCategory', additionalCategorySchema)

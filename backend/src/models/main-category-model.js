@@ -6,13 +6,7 @@ const mainCategorySchema = new mongoose.Schema({
     required: [true, 'Main category name is required'],
     trim: true,
     unique: true
-  },
-  subCategories: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'SubCategory'
-  }]
-}, {
-  timestamps: true
-})
+  }
+}, { timestamps: true })
 
 module.exports = mongoose.model('MainCategory', mainCategorySchema)
