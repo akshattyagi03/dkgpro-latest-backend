@@ -40,10 +40,6 @@ router.post("/addthirdcategory", isAdmin, adminController.createThirdCategory)
 router.post("/create-category-tree", isAdmin, adminController.createCategoryTree)
 //create addon for products
 router.post("/add-addon", isAdmin, adminController.createAddon)
-//create recommended and engagement 
-router.post("/add-customization-section", isAdmin, adminController.createCustomizationSection)
-//get recommended and engagement
-router.get("/customization-sections", isAdmin, adminController.getAllCustomizationSections)
 //create venue
 router.post("/add-venue", isAdmin, adminController.createVenue)
 //get venue

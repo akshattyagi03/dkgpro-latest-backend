@@ -53,10 +53,6 @@ const productSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'AdditionalCategory'
   }],
-  customizationSections: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'CustomizationSection'
-  }],
   isFeatured: {
     type: Boolean,
     default: false
@@ -85,7 +81,8 @@ const productSchema = new mongoose.Schema({
   },
   cancellationPolicy: {
     type: String,
-    trim: true
+    trim: true,
+    default: "Free cancellation up to 24 hours before the event. Partial refund may apply thereafter."
   },
   youtubeVideoLink: {
     type: String,
@@ -107,16 +104,35 @@ const productSchema = new mongoose.Schema({
     required: true,
     trim: true
   }],
-  addons: [{
-    addon: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Addon'
-    },
-    isDefault: {
-      type: Boolean,
-      default: false
+  customizationSections: [
+    {
+      name: {
+        type: String,
+        required: true,
+        trim: true
+      },
+
+      priority: {
+        type: Number,
+        default: 0
+      },
+
+      addons: [
+        {
+          addon: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Addon',
+            required: true
+          },
+
+          isDefault: {
+            type: Boolean,
+            default: false
+          }
+        }
+      ]
     }
-  }],
+  ],
   tags: [{
     type: String,
     trim: true

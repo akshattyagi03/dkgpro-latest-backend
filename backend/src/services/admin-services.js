@@ -90,50 +90,84 @@ const addProducts = async (productData, adminId) => {
   const SubCategory = require('../models/sub-category-model')
   const ThirdCategory = require('../models/third-category-model')
   const AdditionalCategory = require('../models/additional-category-model')
-  const CustomizationSection = require('../models/customization-section-model')
+  const Addon = require('../models/addon-model')
   const { addWatermarkToImages } = require('../utils/watermark-service')
-  
-  const { name, description, price, mainCategory, subCategory, thirdCategory, additionalCategories, customizationSections, isFeatured, tier, images, serviceableAreas, addons, tags } = productData
-  
+
+  const {
+    name,
+    description,
+    price,
+    mainCategory,
+    subCategory,
+    thirdCategory,
+    additionalCategories,
+    customizationSections,
+    isFeatured,
+    tier,
+    images,
+    serviceableAreas,
+    cancellationPolicy,
+    tags
+  } = productData
+
   const mainCat = await MainCategory.findOne({ name: mainCategory })
   if (!mainCat) throw new Error(`Main category '${mainCategory}' not found`)
-  
-  const subCat = await SubCategory.findOne({ name: subCategory, mainCategory: mainCat._id })
+
+  const subCat = await SubCategory.findOne({
+    name: subCategory,
+    mainCategory: mainCat._id
+  })
   if (!subCat) throw new Error(`Sub category '${subCategory}' not found`)
-  
-  const thirdCat = await ThirdCategory.findOne({ name: thirdCategory, subCategory: subCat._id })
+
+  const thirdCat = await ThirdCategory.findOne({
+    name: thirdCategory,
+    subCategory: subCat._id
+  })
   if (!thirdCat) throw new Error(`Third category '${thirdCategory}' not found`)
-  
+
   const additionalCatIds = []
-  if (additionalCategories && additionalCategories.length > 0) {
+  if (additionalCategories?.length) {
     for (const addCatName of additionalCategories) {
       const addCat = await AdditionalCategory.findOne({ name: addCatName })
       if (!addCat) throw new Error(`Additional category '${addCatName}' not found`)
       additionalCatIds.push(addCat._id)
     }
   }
-  
-  const customizationSectionIds = []
-  if (customizationSections && customizationSections.length > 0) {
-    for (const sectionName of customizationSections) {
-      const section = await CustomizationSection.findOne({ name: sectionName })
-      if (!section) throw new Error(`Customization section '${sectionName}' not found`)
-      customizationSectionIds.push(section._id)
-    }
-  }
-  
+
   const watermarkedImages = await addWatermarkToImages(images || [])
-  
-  const addonEntries = []
-  if (addons && addons.length > 0) {
-    const Addon = require('../models/addon-model')
-    for (const addonItem of addons) {
-      const addon = await Addon.findOne({ name: addonItem.name })
-      if (!addon) throw new Error(`Addon '${addonItem.name}' not found`)
-      addonEntries.push({ addon: addon._id, isDefault: addonItem.isDefault || false })
+
+  const builtSections = []
+
+  if (customizationSections?.length) {
+    for (const section of customizationSections) {
+      const addonEntries = []
+
+      if (section.addons?.length) {
+        for (const addonItem of section.addons) {
+          const addon = await Addon.findOne({ name: addonItem.name })
+          if (!addon) throw new Error(`Addon '${addonItem.name}' not found`)
+
+          addonEntries.push({
+            addon: addon._id,
+            isDefault: addonItem.isDefault || false
+          })
+        }
+      }
+
+      // ✅ Remove duplicate addons
+      const uniqueAddons = Array.from(
+        new Map(addonEntries.map(a => [a.addon.toString(), a])).values()
+      )
+
+      builtSections.push({
+        name: section.name,
+        priority: section.priority || 0,
+        addons: uniqueAddons
+      })
     }
   }
 
+  // ✅ Create product
   const product = new Product({
     name,
     description,
@@ -142,15 +176,16 @@ const addProducts = async (productData, adminId) => {
     subCategory: subCat._id,
     thirdCategory: thirdCat._id,
     additionalCategories: additionalCatIds,
-    customizationSections: customizationSectionIds,
+    customizationSections: builtSections,
     isFeatured: isFeatured || false,
     tier: tier || 'standard',
     images: watermarkedImages,
     addedBy: adminId,
     serviceableAreas: serviceableAreas || [],
-    addons: addonEntries,
+    cancellationPolicy: cancellationPolicy || undefined, 
     tags: tags || []
   })
+
   await product.save()
   return product
 }
@@ -173,16 +208,17 @@ const createBlog = async (blogData, adminId) => {
 
 const getProducts = async (adminId) => {
   const Product = require('../models/product-model')
+  const MainCategory = require('../models/main-category-model')
+  const SubCategory = require('../models/sub-category-model')
+  const ThirdCategory = require('../models/third-category-model')
+  const AdditionalCategory = require('../models/additional-category-model')
+  const Addons = require('../models/addon-model')
   const products = await Product.find({ addedBy: adminId })
     .populate('mainCategory')
     .populate('subCategory')
     .populate('thirdCategory')
     .populate('additionalCategories')
-    .populate({
-      path: 'customizationSections',
-      populate: { path: 'subSections.addons' }
-    })
-    .populate('addons.addon')
+    .populate('customizationSections.addons.addon')
   return products
 }
 
@@ -609,38 +645,6 @@ const addAddon = async (addonData) => {
   return addon
 }
 
-const createCustomizationSection = async (sectionData) => {
-  const CustomizationSection = require('../models/customization-section-model')
-  const Addon = require('../models/addon-model')
-  const { name, description, subSections } = sectionData
-  
-  const processedSubSections = await Promise.all(subSections.map(async (subSection) => {
-    const addonIds = []
-    
-    if (subSection.addons && subSection.addons.length > 0) {
-      for (const addonName of subSection.addons) {
-        const addon = await Addon.findOne({ name: addonName })
-        if (!addon) throw new Error(`Addon '${addonName}' not found`)
-        addonIds.push(addon._id)
-      }
-    }
-    
-    return {
-      name: subSection.name,
-      description: subSection.description,
-      addons: addonIds
-    }
-  }))
-  
-  const section = new CustomizationSection({
-    name,
-    description,
-    subSections: processedSubSections
-  })
-  
-  await section.save()
-  return section
-}
 
 const sendAdminPasswordResetOTP = async (adminData) => {
   const { email } = adminData
@@ -832,7 +836,6 @@ module.exports = {
   addThirdCategory, 
   createCategoryHierarchy,
   addAddon,
-  createCustomizationSection,
   getCustomizationSections,
   toggleProductFeatured,
   toggleProductTier,

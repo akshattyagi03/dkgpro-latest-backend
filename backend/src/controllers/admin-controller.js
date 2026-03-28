@@ -220,15 +220,6 @@ const createAddon = async (req, res) => {
   }
 }
 
-const createCustomizationSectionController = async (req, res) => {
-  try {
-    const section = await createCustomizationSection(req.body)
-    res.status(201).json({ message: 'Customization section created successfully', section })
-  } catch (error) {
-    res.status(400).json({ message: error.message })
-  }
-}
-
 const sendResetOTP = async (req, res) => {
   try {
     const result = await sendAdminPasswordResetOTP(req.body)
@@ -371,7 +362,6 @@ module.exports = {
   createThirdCategory,
   createCategoryTree,
   createAddon,
-  createCustomizationSection: createCustomizationSectionController,
   getAllCustomizationSections,
   toggleFeatured,
   toggleTier,

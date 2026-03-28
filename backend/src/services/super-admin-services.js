@@ -124,16 +124,17 @@ const rejectAdmin = async (adminId) => {
 
 const getAllProducts = async () => {
   const Product = require('../models/product-model')
+  const MainCategory = require('../models/main-category-model')
+  const SubCategory = require('../models/sub-category-model')
+  const ThirdCategory = require('../models/third-category-model')
+  const AdditionalCategory = require('../models/additional-category-model')
+  const Addon = require('../models/addon-model')
   const products = await Product.find()
     .populate('mainCategory')
     .populate('subCategory')
     .populate('thirdCategory')
     .populate('additionalCategories')
-    .populate({
-      path: 'customizationSections',
-      populate: { path: 'subSections.addons' }
-    })
-    .populate('addons.addon')
+    .populate('customizationSections.addons.addon')
     .populate('addedBy')
   return products
 }
