@@ -28,7 +28,10 @@ const {
   raiseInquiry,
   getVenuesForUsers,
   createReview,
-  getProfileService
+  getProfileService,
+  getSimilarProducts,
+  getPublishedBlogs,
+  getBlogBySlug
 } = require('../services/user-services')
 const { HTTP_STATUS } = require('../utils/constants')
 
@@ -202,8 +205,10 @@ const getFilteredProductsController = async (req, res) => {
 const getProductDetailsController = async (req, res) => {
   try {
     const product = await getProductDetails(req.params.productId)
-    const reviews = await reviewModel.find({productId: req.params.productId})
-    res.status(HTTP_STATUS.OK).json(product, reviews)
+    const reviews = await reviewModel.find({ product: req.params.productId })
+      .populate('user', 'fullName')
+      .sort({ createdAt: -1 })
+    res.status(HTTP_STATUS.OK).json({ product, reviews })
   } catch (error) {
     res.status(HTTP_STATUS.NOT_FOUND).json({ message: error.message })
   }
@@ -231,12 +236,14 @@ const writeReview = async (req, res) => {
   try {
     const { productId } = req.query;
     const { reviewText, rating } = req.body;
+    const images = req.files ? req.files.map(f => f.path) : [];
 
     const review = await createReview(
       req.user._id,
       productId,
       reviewText,
-      rating
+      rating,
+      images
     );
 
     res.status(HTTP_STATUS.CREATED).json({
@@ -335,6 +342,36 @@ const raiseInquiryController = async (req, res) => {
   }
 }
 
+const getPublishedBlogsController = async (req, res) => {
+  try {
+    const { page, limit, category } = req.query
+    const result = await getPublishedBlogs(page, limit, category)
+    res.status(HTTP_STATUS.OK).json(result)
+  } catch (error) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: error.message })
+  }
+}
+
+const getBlogBySlugController = async (req, res) => {
+  try {
+    const blog = await getBlogBySlug(req.params.slug)
+    res.status(HTTP_STATUS.OK).json(blog)
+  } catch (error) {
+    res.status(HTTP_STATUS.NOT_FOUND).json({ message: error.message })
+  }
+}
+
+const getSimilarProductsController = async (req, res) => {
+  try {
+    const { productId } = req.params
+    const { limit } = req.query
+    const products = await getSimilarProducts(productId, limit)
+    res.status(HTTP_STATUS.OK).json({ products })
+  } catch (error) {
+    res.status(HTTP_STATUS.NOT_FOUND).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -364,5 +401,8 @@ module.exports = {
   raiseInquiry: raiseInquiryController,
   getVenues: getVenuesController,
   writeReview,
-  getProfile
+  getProfile,
+  getSimilarProducts: getSimilarProductsController,
+  getPublishedBlogs: getPublishedBlogsController,
+  getBlogBySlug: getBlogBySlugController
 }

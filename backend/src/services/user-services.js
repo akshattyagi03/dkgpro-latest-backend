@@ -87,7 +87,7 @@ const loginUser = async (userData, res) => {
 
   return { user: { id: user._id, fullName: user.fullName, email } }
 }
-const createReview = async (userId, productId, reviewText, rating) => {
+const createReview = async (userId, productId, reviewText, rating, images = []) => {
   const Review = require('../models/review-model');
   const Product = require('../models/product-model');
   const mongoose = require('mongoose');
@@ -114,25 +114,14 @@ const createReview = async (userId, productId, reviewText, rating) => {
     product: productId,
     reviewText,
     rating,
+    images
   });
 
-  // 🔄 Recalculate average rating
   const stats = await Review.aggregate([
-    {
-      $match: {
-        product: new mongoose.Types.ObjectId(productId),
-      },
-    },
-    {
-      $group: {
-        _id: '$product',
-        avgRating: { $avg: '$rating' },
-        numReviews: { $sum: 1 },
-      },
-    },
+    { $match: { product: new mongoose.Types.ObjectId(productId) } },
+    { $group: { _id: '$product', avgRating: { $avg: '$rating' }, numReviews: { $sum: 1 } } }
   ]);
 
-  // ✅ Update product
   if (stats.length > 0) {
     await Product.findByIdAndUpdate(productId, {
       averageRating: stats[0].avgRating,
@@ -179,6 +168,7 @@ const getProducts = async () => {
   const ThirdCategory = require('../models/third-category-model')
   const AdditionalCategory = require('../models/additional-category-model')
   const Addon = require('../models/addon-model')
+  const HeroBanner = require('../models/hero-banner-model')
 
   const featuredProducts = await Product.find({ isFeatured: true })
     .limit(6)
@@ -224,8 +214,13 @@ const getProducts = async () => {
     })
     .populate('addedBy')
 
+  const heroBanners = await HeroBanner.find({ isActive: true })
+    .populate('subCategory')
+    .populate('addedBy', 'fullName email')
+    .sort({ createdAt: -1 })
+
   return {
-    bannerImage: "https://images.unsplash.com/photo-1519225421980-715cb0215aed",
+    heroBanners,
     featuredProducts,
     premiumProducts,
     allProducts
@@ -484,8 +479,12 @@ const getPremiumProducts = async () => {
 const getProductsByThirdCategory = async (categoryName, page = 1, limit = 10) => {
   const Product = require('../models/product-model')
   const ThirdCategory = require('../models/third-category-model')
+  const AdditionalCategory = require('../models/additional-category-model')
+  const MainCategory = require('../models/main-category-model')
+  const SubCategory = require('../models/sub-category-model')
+  const Addon = require('../models/addon-model')
 
-  const thirdCategory = await ThirdCategory.findOne({ name: categoryName })
+  const thirdCategory = await ThirdCategory.findOne({ name: categoryName }).lean()
   if (!thirdCategory) {
     throw new Error(`Third category '${categoryName}' not found`)
   }
@@ -502,16 +501,28 @@ const getProductsByThirdCategory = async (categoryName, page = 1, limit = 10) =>
     .populate('subCategory')
     .populate('thirdCategory')
     .populate('additionalCategories')
-    .populate({
-      path: 'customizationSections.addons.addon'
-    })
+    .populate({ path: 'customizationSections.addons.addon' })
     .populate('addedBy')
 
   const total = await Product.countDocuments({ thirdCategory: thirdCategory._id })
 
+  // fetch additional categories tree rooted at this thirdCategory
+  const buildAdditionalTree = async (parentId, parentModel) => {
+    const children = await AdditionalCategory.find({ parentCategory: parentId, parentModel }).lean()
+    return Promise.all(
+      children.map(async child => ({
+        ...child,
+        children: await buildAdditionalTree(child._id, 'AdditionalCategory')
+      }))
+    )
+  }
+
+  const additionalCategories = await buildAdditionalTree(thirdCategory._id, 'ThirdCategory')
+
   return {
     products,
     category: thirdCategory,
+    additionalCategories,
     pagination: {
       currentPage: pageNum,
       totalPages: Math.ceil(total / limitNum),
@@ -602,7 +613,9 @@ const getFilteredProducts = async (filters) => {
 const addToCart = async (userId, productId) => {
   const Cart = require('../models/cart-model')
   const Product = require('../models/product-model')
-
+  const MainCategory = require("../models/main-category-model");
+  const SubCategory = require("../models/sub-category-model");
+  const ThirdCategory = require("../models/third-category-model");
   const product = await Product.findById(productId)
   if (!product) {
     throw new Error('Product not found')
@@ -931,4 +944,75 @@ const raiseInquiry = async (inquiryData) => {
   return inquiry
 }
 
-module.exports = {getProfileService, sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, getVenuesForUsers, createReview }
+const getPublishedBlogs = async (page = 1, limit = 10, category) => {
+  const Blog = require('../models/blog-model')
+  const pageNum = parseInt(page) || 1
+  const limitNum = Math.min(parseInt(limit) || 10, 50)
+  const skip = (pageNum - 1) * limitNum
+
+  const query = { published: true }
+  if (category) query.category = category
+
+  const blogs = await Blog.find(query)
+    .select('-content')
+    .populate('author', 'fullName')
+    .sort({ publishedAt: -1 })
+    .skip(skip)
+    .limit(limitNum)
+
+  const total = await Blog.countDocuments(query)
+
+  return {
+    blogs,
+    pagination: {
+      currentPage: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+      totalBlogs: total,
+      hasNext: pageNum < Math.ceil(total / limitNum),
+      hasPrev: pageNum > 1
+    }
+  }
+}
+
+const getBlogBySlug = async (slug) => {
+  const Blog = require('../models/blog-model')
+  const blog = await Blog.findOneAndUpdate(
+    { slug, published: true },
+    { $inc: { views: 1 } },
+    { new: true }
+  ).populate('author', 'fullName')
+
+  if (!blog) throw new Error('Blog not found')
+  return blog
+}
+
+const getSimilarProducts = async (productId, limit = 8) => {
+  const Product = require('../models/product-model')
+  const mainCategory = require("../models/main-category-model")
+  const SubCategory = require('../models/sub-category-model')
+  const ThirdCategory = require('../models/third-category-model')
+  const AdditionalCategory = require('../models/additional-category-model')
+  const AddOn = require("../models/addon-model")
+  const product = await Product.findById(productId).select('thirdCategory serviceableAreas')
+  if (!product) throw new Error('Product not found')
+
+  const cities = product.serviceableAreas.map(a => a.city)
+
+  const similar = await Product.find({
+    _id: { $ne: product._id },
+    thirdCategory: product.thirdCategory,
+    'serviceableAreas.city': { $in: cities }
+  })
+    .limit(limit)
+    .sort({ isFeatured: -1, createdAt: -1 })
+    .populate('mainCategory')
+    .populate('subCategory')
+    .populate('thirdCategory')
+    .populate('additionalCategories')
+    .populate({ path: 'customizationSections.addons.addon' })
+    .populate('addedBy', 'fullName email')
+
+  return similar
+}
+
+module.exports = {getProfileService, sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, getVenuesForUsers, createReview, getSimilarProducts, getPublishedBlogs, getBlogBySlug }

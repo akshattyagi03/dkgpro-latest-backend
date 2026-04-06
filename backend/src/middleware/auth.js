@@ -5,41 +5,43 @@ const SuperAdmin = require('../models/super-admin-model')
 
 const isLoggedIn = async (req, res, next) => {
   try {
-    let accessToken = req.cookies.accessToken
+    const accessToken = req.cookies.accessToken
     const refreshToken = req.cookies.refreshToken
+
     if (accessToken) {
       try {
         const decoded = jwt.verify(accessToken, process.env.JWT_SECRET_KEY)
         const user = await User.findById(decoded.userId)
-        
         if (user) {
           req.user = user
           return next()
         }
+        return res.status(401).json({ message: 'User not found. Please login again.' })
       } catch (error) {
+        // access token expired, try refresh token
       }
     }
+
     if (refreshToken) {
       try {
         const { refreshAccessToken } = require('../services/user-services')
         const { accessToken: newAccessToken } = await refreshAccessToken(refreshToken)
-        
         const decoded = jwt.verify(newAccessToken, process.env.JWT_SECRET_KEY)
         const user = await User.findById(decoded.userId)
-        
         if (user) {
           res.cookie('accessToken', newAccessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
           req.user = user
           return next()
         }
+        return res.status(401).json({ message: 'User not found. Please login again.' })
       } catch (error) {
-        res.status(401).json({message: "Unauthorized access."})
+        return res.status(401).json({ message: 'Unauthorized access.' })
       }
     }
-    
+
     return res.status(401).json({ message: 'Access denied. Please login again.' })
   } catch (error) {
-    res.status(401).json({ message: 'Authentication failed.' })
+    return res.status(401).json({ message: 'Authentication failed.' })
   }
 }
 

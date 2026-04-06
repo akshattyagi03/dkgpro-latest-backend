@@ -39,7 +39,10 @@ const orderSchema = new mongoose.Schema({
     state: String,
     zipCode: String,
     country: String
-  }
+  },
+  razorpayOrderId: String,
+  razorpayPaymentId: String,
+  razorpaySignature: String
 }, {
   timestamps: true
 });

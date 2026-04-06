@@ -1,6 +1,8 @@
 const express = require('express')
 const { isLoggedIn } = require('../middleware/auth')
 const userController = require('../controllers/user-controller')
+const paymentController = require('../controllers/payment-controller')
+const upload = require('../../configuration/multer-config')
 const router = express.Router()
 //registration otp
 router.post('/send-otp', userController.sendOTP)
@@ -28,6 +30,8 @@ router.get('/category/:categoryName', userController.getProductsByCategory)
 router.get('/filter', userController.getFilteredProducts)
 //product details by ID
 router.get('/product/:productId', userController.getProductDetails)
+//similar products by third category and city
+router.get('/product/:productId/similar', userController.getSimilarProducts)
 //district of provided pincode
 router.get('/check/:pincode', userController.checkPincodeDistrict)
 //all products in a city 
@@ -57,7 +61,16 @@ router.get('/main-categories', userController.getAllMainCategories)
 //birthday packages grouped by city
 router.get('/birthday-packages-by-city', userController.getBirthdayPackagesByCity)
 //write review
-router.post('/write-review', isLoggedIn, userController.writeReview)
+router.post('/write-review', isLoggedIn, upload.array('images', 5), userController.writeReview)
 //get profile
 router.get('/profile', isLoggedIn, userController.getProfile)
+//get all published blogs
+router.get('/blogs', userController.getPublishedBlogs)
+//get single blog by slug (increments views)
+router.get('/blogs/:slug', userController.getBlogBySlug)
+//payment routes
+router.post('/create-order', isLoggedIn, paymentController.createOrderController)
+router.post('/verify-payment', isLoggedIn, paymentController.verifyPaymentController)
+router.get('/orders', isLoggedIn, paymentController.getOrderHistoryController)
+router.get('/order/:orderId', isLoggedIn, paymentController.getOrderDetailsController)
 module.exports = router

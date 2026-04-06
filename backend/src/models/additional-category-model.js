@@ -22,6 +22,10 @@ const additionalCategorySchema = new mongoose.Schema({
     type: Number,
     required: true,
     min: 4
+  },
+  bannerImage: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true

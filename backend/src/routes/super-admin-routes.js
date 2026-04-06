@@ -1,6 +1,7 @@
 const express = require('express')
 const superAdminController = require('../controllers/super-admin-controller')
 const { isSuperAdmin } = require('../middleware/auth')
+const upload = require('../../configuration/multer-config')
 const router = express.Router()
 //send otp for registration
 router.post('/send-otp', (req, res) => {
@@ -37,13 +38,13 @@ router.post("/reject-admin/:adminId", isSuperAdmin, superAdminController.rejectA
 //get all products
 router.get("/products", isSuperAdmin, superAdminController.getProducts)
 //edit product
-router.put("/edit-product/:productId", isSuperAdmin, superAdminController.updateProduct)
+router.put("/edit-product/:productId", isSuperAdmin, upload.array('images', 10), superAdminController.updateProduct)
 //delete product
 router.delete("/delete-product/:productId", isSuperAdmin, superAdminController.removeProduct)
 //get all venues
 router.get("/venues", isSuperAdmin, superAdminController.getVenues)
 //edit venue
-router.put("/edit-venue/:venueId", isSuperAdmin, superAdminController.editVenue)
+router.put("/edit-venue/:venueId", isSuperAdmin, upload.array('images', 10), superAdminController.editVenue)
 //delete venue
 router.delete("/delete-venue/:venueId", isSuperAdmin, superAdminController.deleteVenue)
 //get all inquiries

@@ -97,6 +97,7 @@ const addProducts = async (productData, adminId) => {
     name,
     description,
     price,
+    discountedPrice,
     mainCategory,
     subCategory,
     thirdCategory,
@@ -112,6 +113,10 @@ const addProducts = async (productData, adminId) => {
     experiences,
     keyHighlights
   } = productData
+
+  if (discountedPrice && Number(discountedPrice) >= Number(price)) {
+    throw new Error('Discounted price must be less than original price')
+  }
 
   const mainCat = await MainCategory.findOne({ name: mainCategory })
   if (!mainCat) throw new Error(`Main category '${mainCategory}' not found`)
@@ -137,7 +142,9 @@ const addProducts = async (productData, adminId) => {
     }
   }
 
-  const watermarkedImages = await addWatermarkToImages(images || [])
+  const watermarkedImages = images && images.length > 0 && images[0].startsWith('http')
+    ? images  // already Cloudinary URLs, skip watermarking
+    : await addWatermarkToImages(images || [])
 
   const builtSections = []
 
@@ -151,8 +158,7 @@ const addProducts = async (productData, adminId) => {
           if (!addon) throw new Error(`Addon '${addonItem.name}' not found`)
 
           addonEntries.push({
-            addon: addon._id,
-            isDefault: addonItem.isDefault || false
+            addon: addon._id
           })
         }
       }
@@ -175,6 +181,7 @@ const addProducts = async (productData, adminId) => {
     name,
     description,
     price,
+    discountedPrice: discountedPrice ? Number(discountedPrice) : null,
     mainCategory: mainCat._id,
     subCategory: subCat._id,
     thirdCategory: thirdCat._id,
@@ -200,14 +207,31 @@ const addProducts = async (productData, adminId) => {
 
 const createBlog = async (blogData, adminId) => {
   const Blog = require('../models/blog-model')
-  const { title, content, tags, published } = blogData
+  const { title, content, tags, published, image, excerpt, category, metaTitle, metaDescription } = blogData
+
+  // auto-generate slug from title
+  const baseSlug = title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+  const existing = await Blog.findOne({ slug: { $regex: `^${baseSlug}` } }).sort({ createdAt: -1 })
+  const slug = existing ? `${baseSlug}-${Date.now()}` : baseSlug
+
+  // auto-calculate reading time (avg 200 words/min)
+  const wordCount = content.trim().split(/\s+/).length
+  const readingTime = Math.ceil(wordCount / 200)
 
   const blog = new Blog({
     title,
+    slug,
+    excerpt,
     content,
+    featuredImage: image || null,
     author: adminId,
+    category,
     tags: tags || [],
-    published: published || false
+    readingTime,
+    metaTitle: metaTitle || title,
+    metaDescription: metaDescription || excerpt,
+    published: published || false,
+    publishedAt: published ? new Date() : null
   })
 
   await blog.save()
@@ -323,7 +347,7 @@ const addAdditionalCategory = async (data) => {
   const ThirdCategory = require('../models/third-category-model')
   const AdditionalCategory = require('../models/additional-category-model')
 
-  const { name, description, parentName, parentModel } = data
+  const { name, description, parentName, parentModel, bannerImage } = data
 
   if (!['ThirdCategory', 'AdditionalCategory'].includes(parentModel)) {
     throw new Error('Invalid parent model')
@@ -365,7 +389,8 @@ const addAdditionalCategory = async (data) => {
     description,
     parentCategory: parentId,
     parentModel,
-    level
+    level,
+    bannerImage: bannerImage || null
   })
 
   return newCategory
@@ -375,7 +400,7 @@ const addSubCategory = async (categoryData) => {
   const SubCategory = require('../models/sub-category-model')
   const MainCategory = require('../models/main-category-model')
 
-  const { name, description, mainCategory } = categoryData
+  const { name, description, mainCategory, bannerImage } = categoryData
 
   // Find main category
   const mainCat = await MainCategory.findOne({ name: mainCategory })
@@ -396,7 +421,8 @@ const addSubCategory = async (categoryData) => {
   const subCategoryDoc = await SubCategory.create({
     name,
     description,
-    mainCategory: mainCat._id
+    mainCategory: mainCat._id,
+    bannerImage: bannerImage || null
   })
 
   return subCategoryDoc
@@ -406,7 +432,7 @@ const addThirdCategory = async (categoryData) => {
   const ThirdCategory = require('../models/third-category-model')
   const SubCategory = require('../models/sub-category-model')
 
-  const { name, description, subCategory } = categoryData
+  const { name, description, subCategory, bannerImage } = categoryData
 
   // Find subcategory
   const subCat = await SubCategory.findOne({ name: subCategory })
@@ -427,7 +453,8 @@ const addThirdCategory = async (categoryData) => {
   const thirdCategoryDoc = await ThirdCategory.create({
     name,
     description,
-    subCategory: subCat._id
+    subCategory: subCat._id,
+    bannerImage: bannerImage || null
   })
 
   return thirdCategoryDoc
@@ -548,20 +575,27 @@ const editBlog = async (blogId, adminId, updateData) => {
   const Blog = require('../models/blog-model')
 
   const existingBlog = await Blog.findById(blogId)
-  if (!existingBlog) {
-    throw new Error('Blog not found')
+  if (!existingBlog) throw new Error('Blog not found')
+  if (existingBlog.author.toString() !== adminId.toString()) throw new Error('Unauthorized access')
+
+  // recalculate reading time if content changed
+  if (updateData.content) {
+    const wordCount = updateData.content.trim().split(/\s+/).length
+    updateData.readingTime = Math.ceil(wordCount / 200)
   }
 
-  if (existingBlog.author.toString() !== adminId.toString()) {
-    throw new Error('Unauthorized access')
+  // set publishedAt if being published for first time
+  if (updateData.published && !existingBlog.publishedAt) {
+    updateData.publishedAt = new Date()
   }
 
-  const blog = await Blog.findByIdAndUpdate(
-    blogId,
-    updateData,
-    { new: true }
-  )
+  // map image → featuredImage if sent
+  if (updateData.image) {
+    updateData.featuredImage = updateData.image
+    delete updateData.image
+  }
 
+  const blog = await Blog.findByIdAndUpdate(blogId, updateData, { new: true })
   return blog
 }
 
@@ -648,7 +682,35 @@ const addAddon = async (addonData) => {
   const Addon = require('../models/addon-model')
   const { name, description, price, image, category, tags, customFields } = addonData
 
-  const addon = new Addon({ name, description, price, image, category, tags: tags || [], customFields: customFields || [] })
+  // Validate and sanitize customFields
+  const validTypes = ['text', 'textarea', 'number', 'dropdown', 'file']
+  const sanitizedCustomFields = customFields?.map(field => {
+    let fieldType = field.type
+
+    // Map common incorrect values to valid ones
+    if (fieldType === 'string') {
+      fieldType = 'text'
+    }
+
+    if (!validTypes.includes(fieldType)) {
+      throw new Error(`Invalid custom field type '${fieldType}'. Must be one of: ${validTypes.join(', ')}`)
+    }
+
+    return {
+      ...field,
+      type: fieldType
+    }
+  }) || []
+
+  const addon = new Addon({
+    name,
+    description,
+    price,
+    image,
+    category,
+    tags: tags || [],
+    customFields: sanitizedCustomFields
+  })
   await addon.save()
   return addon
 }
@@ -826,6 +888,25 @@ const verifyAdminPhoneLogin = async (userData, res) => {
   return { admin: { id: admin._id, fullName: admin.fullName, email: admin.email, phoneNumber: admin.phoneNumber } }
 }
 
+const addHeroBanner = async (bannerData, adminId) => {
+  const HeroBanner = require('../models/hero-banner-model')
+  const SubCategory = require('../models/sub-category-model')
+
+  const { image, subCategory } = bannerData
+
+  const subCat = await SubCategory.findOne({ name: subCategory })
+  if (!subCat) throw new Error(`Sub category '${subCategory}' not found`)
+
+  const banner = new HeroBanner({
+    image,
+    subCategory: subCat._id,
+    addedBy: adminId
+  })
+
+  await banner.save()
+  return banner.populate('subCategory')
+}
+
 module.exports = {
   sendAdminOTP,
   verifyAdminOTP,
@@ -854,5 +935,6 @@ module.exports = {
   deleteBlog,
   refreshAdminAccessToken,
   logoutAdmin,
-  addAdditionalCategory
+  addAdditionalCategory,
+  addHeroBanner
 }

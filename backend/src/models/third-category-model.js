@@ -14,6 +14,10 @@ const thirdCategorySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'SubCategory',
     required: true
+  },
+  bannerImage: {
+    type: String,
+    default: null
   }
 }, { timestamps: true })
 

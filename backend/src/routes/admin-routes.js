@@ -1,6 +1,7 @@
 const express = require('express')
 const adminController = require('../controllers/admin-controller')
 const { isAdmin } = require('../middleware/auth')
+const upload = require('../../configuration/multer-config')
 const router = express.Router()
 //send otp for registration
 router.post('/send-otp', adminController.sendOTP)
@@ -19,7 +20,12 @@ router.post('/login', adminController.login)
 //home page for admin
 router.get("/home", isAdmin, adminController.getHome)
 //creating products
-router.post("/addproducts", isAdmin, adminController.addProduct)
+router.post("/addproducts", isAdmin, (req, res, next) => {
+  upload.array('images', 10)(req, res, (err) => {
+    if (err) return res.status(400).json({ message: err.message })
+    next()
+  })
+}, adminController.addProduct)
 //get products
 router.get("/products", isAdmin, adminController.getAdminProducts)
 //put isFeatured property for product
@@ -33,27 +39,29 @@ router.get("/category-tree", isAdmin, adminController.getCategoryTreeView)
 //create new main category
 router.post("/addcategory", isAdmin, adminController.createMainCategory)
 //create new sub category
-router.post("/addsubcategory", isAdmin, adminController.createSubCategory)
+router.post("/addsubcategory", isAdmin, upload.single('bannerImage'), adminController.createSubCategory)
 //create new third category
-router.post("/addthirdcategory", isAdmin, adminController.createThirdCategory)
+router.post("/addthirdcategory", isAdmin, upload.single('bannerImage'), adminController.createThirdCategory)
 //create full category tree
 router.post("/create-category-tree", isAdmin, adminController.createCategoryTree)
 //create addon for products
-router.post("/add-addon", isAdmin, adminController.createAddon)
+router.post("/add-addon", isAdmin, upload.single('image'), adminController.createAddon)
 //create venue
-router.post("/add-venue", isAdmin, adminController.createVenue)
+router.post("/add-venue", isAdmin, upload.array('images', 10), adminController.createVenue)
 //get venue
 router.get("/venues", isAdmin, adminController.getAllVenues)
 //create blog
-router.post("/create-blog", isAdmin, adminController.createNewBlog)
+router.post("/create-blog", isAdmin, upload.single('featuredImage'), adminController.createNewBlog)
 //get blogs
 router.get("/blogs", isAdmin, adminController.getAdminBlogs)
 //edit blogs
-router.put("/edit-blog/:blogId", isAdmin, adminController.updateBlog)
+router.put("/edit-blog/:blogId", isAdmin, upload.single('featuredImage'), adminController.updateBlog)
 //delete blogs
 router.delete("/delete-blog/:blogId", isAdmin, adminController.removeBlog)
 //logout admin
 router.get("/logout", isAdmin, adminController.logout)
 //create additional category 
-router.post("/create-additional-category", isAdmin, adminController.createAdditionalCategory)
+router.post("/create-additional-category", isAdmin, upload.single('bannerImage'), adminController.createAdditionalCategory)
+//add hero section banner
+router.post("/add-hero-section-banner", isAdmin, upload.single('image'), adminController.addHeroBanner)
 module.exports = router

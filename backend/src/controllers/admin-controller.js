@@ -26,7 +26,8 @@ const {
   editBlog, 
   deleteBlog,
   logoutAdmin,
-  addAdditionalCategory
+  addAdditionalCategory,
+  addHeroBanner
 } = require('../services/admin-services')
 
 const sendOTP = async (req, res) => {
@@ -62,7 +63,8 @@ const getHome = (req, res) => {
 
 const addProduct = async (req, res) => {
   try {
-    const product = await addProducts(req.body, req.admin._id)
+    const images = req.files ? req.files.map(f => f.path) : req.body.images || []
+    const product = await addProducts({ ...req.body, images }, req.admin._id)
     res.status(201).json({ message: 'Product added successfully', product })
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -98,7 +100,8 @@ const createMainCategory = async (req, res) => {
 
 const createSubCategory = async (req, res) => {
   try {
-    const subCategory = await addSubCategory(req.body)
+    const bannerImage = req.file ? req.file.path : undefined
+    const subCategory = await addSubCategory({ ...req.body, bannerImage })
     res.status(201).json({ message: 'Sub category added successfully', subCategory })
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -107,7 +110,8 @@ const createSubCategory = async (req, res) => {
 
 const createThirdCategory = async (req, res) => {
   try {
-    const thirdCategory = await addThirdCategory(req.body)
+    const bannerImage = req.file ? req.file.path : undefined
+    const thirdCategory = await addThirdCategory({ ...req.body, bannerImage })
     res.status(201).json({ message: 'Third category added successfully', thirdCategory })
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -116,7 +120,8 @@ const createThirdCategory = async (req, res) => {
 
 const createNewBlog = async (req, res) => {
   try {
-    const blog = await createBlog(req.body, req.admin._id)
+    const image = req.file ? req.file.path : req.body.featuredImage
+    const blog = await createBlog({ ...req.body, image }, req.admin._id)
     res.status(201).json({ message: 'Blog created successfully', blog })
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -134,7 +139,9 @@ const getAdminBlogs = async (req, res) => {
 
 const updateBlog = async (req, res) => {
   try {
-    const blog = await editBlog(req.params.blogId, req.admin._id, req.body)
+    const image = req.file ? req.file.path : undefined
+    const updateData = image ? { ...req.body, image } : req.body
+    const blog = await editBlog(req.params.blogId, req.admin._id, updateData)
     res.status(200).json({ message: 'Blog updated successfully', blog })
   } catch (error) {
     if (error.message === 'Unauthorized access') {
@@ -186,7 +193,8 @@ const createCategoryTree = async (req, res) => {
 
 const createVenue = async (req, res) => {
   try {
-    const venue = await addVenue(req.body, req.admin._id)
+    const images = req.files ? req.files.map(f => f.path) : req.body.images || []
+    const venue = await addVenue({ ...req.body, images }, req.admin._id)
     res.status(201).json({ message: 'Venue added successfully', venue })
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -213,7 +221,8 @@ const getCategoryTreeView = async (req, res) => {
 
 const createAddon = async (req, res) => {
   try {
-    const addon = await addAddon(req.body)
+    const image = req.file ? req.file.path : req.body.image
+    const addon = await addAddon({ ...req.body, image })
     res.status(201).json({ message: 'Addon created successfully', addon })
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -251,7 +260,8 @@ const createAdditionalCategory = async (req, res) => {
       name,
       description,
       parentName,
-      parentModel
+      parentModel,
+      bannerImage: req.file ? req.file.path : undefined
     })
 
     return res.status(201).json({
@@ -344,6 +354,16 @@ const verifyPhoneLogin = async (req, res) => {
   }
 }
 
+const addHeroBannerController = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'Banner image is required' })
+    const banner = await addHeroBanner({ ...req.body, image: req.file.path }, req.admin._id)
+    res.status(201).json({ message: 'Hero banner added successfully', banner })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -372,5 +392,6 @@ module.exports = {
   updateBlog,
   removeBlog,
   logout,
-  createAdditionalCategory
+  createAdditionalCategory,
+  addHeroBanner: addHeroBannerController
 }

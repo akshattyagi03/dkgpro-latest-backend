@@ -85,7 +85,9 @@ const getProducts = async (req, res) => {
 
 const updateProduct = async (req, res) => {
   try {
-    const product = await editProduct(req.params.productId, req.body)
+    const images = req.files && req.files.length > 0 ? req.files.map(f => f.path) : undefined
+    const updateData = images ? { ...req.body, images } : req.body
+    const product = await editProduct(req.params.productId, updateData)
     res.status(200).json({ message: 'Product updated successfully', product })
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -125,7 +127,9 @@ const getVenues = async (req, res) => {
 
 const editVenue = async (req, res) => {
   try {
-    const venue = await updateVenue(req.params.venueId, req.body)
+    const images = req.files && req.files.length > 0 ? req.files.map(f => f.path) : undefined
+    const updateData = images ? { ...req.body, images } : req.body
+    const venue = await updateVenue(req.params.venueId, updateData)
     res.status(200).json({ message: 'Venue updated successfully', venue })
   } catch (error) {
     res.status(400).json({ message: error.message })
