@@ -66,6 +66,14 @@ router.get('/birthday-packages-by-city', userController.getBirthdayPackagesByCit
 router.post('/write-review', isLoggedIn, upload.array('images', 5), userController.writeReview)
 //write venue review
 router.post('/venue/:venueId/review', isLoggedIn, upload.array('images', 5), userController.writeVenueReview)
+//edit venue review
+router.put('/venue-review/:reviewId', isLoggedIn, userController.editVenueReview)
+//delete venue review
+router.delete('/venue-review/:reviewId', isLoggedIn, userController.deleteVenueReview)
+//edit product review
+router.put('/review/:reviewId', isLoggedIn, userController.editReview)
+//delete product review
+router.delete('/review/:reviewId', isLoggedIn, userController.deleteReview)
 //get profile
 router.get('/profile', isLoggedIn, userController.getProfile)
 //get all published blogs

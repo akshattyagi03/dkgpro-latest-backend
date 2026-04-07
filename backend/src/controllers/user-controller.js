@@ -30,6 +30,10 @@ const {
   getVenueDetails,
   createReview,
   createVenueReview,
+  editReview,
+  deleteReview,
+  editVenueReview,
+  deleteVenueReview,
   getProfileService,
   getSimilarProducts,
   getPublishedBlogs,
@@ -239,7 +243,7 @@ const writeReview = async (req, res) => {
     const { productId } = req.query;
     const { reviewText, rating } = req.body;
     const images = req.files ? req.files.map(f => f.path) : [];
-
+    
     const review = await createReview(
       req.user._id,
       productId,
@@ -394,6 +398,48 @@ const getSimilarProductsController = async (req, res) => {
   }
 }
 
+const editReviewController = async (req, res) => {
+  try {
+    const { reviewText, rating } = req.body || {}
+    const review = await editReview(req.user._id, req.params.reviewId, reviewText, rating)
+    res.status(HTTP_STATUS.OK).json({ message: 'Review updated successfully', review })
+  } catch (error) {
+    const status = error.message === 'Unauthorized' ? HTTP_STATUS.FORBIDDEN : HTTP_STATUS.BAD_REQUEST
+    res.status(status).json({ message: error.message })
+  }
+}
+
+const deleteReviewController = async (req, res) => {
+  try {
+    await deleteReview(req.user._id, req.params.reviewId)
+    res.status(HTTP_STATUS.OK).json({ message: 'Review deleted successfully' })
+  } catch (error) {
+    const status = error.message === 'Unauthorized' ? HTTP_STATUS.FORBIDDEN : HTTP_STATUS.BAD_REQUEST
+    res.status(status).json({ message: error.message })
+  }
+}
+
+const editVenueReviewController = async (req, res) => {
+  try {
+    const { reviewText, rating } = req.body || {}
+    const review = await editVenueReview(req.user._id, req.params.reviewId, reviewText, rating)
+    res.status(HTTP_STATUS.OK).json({ message: 'Venue review updated successfully', review })
+  } catch (error) {
+    const status = error.message === 'Unauthorized' ? HTTP_STATUS.FORBIDDEN : HTTP_STATUS.BAD_REQUEST
+    res.status(status).json({ message: error.message })
+  }
+}
+
+const deleteVenueReviewController = async (req, res) => {
+  try {
+    await deleteVenueReview(req.user._id, req.params.reviewId)
+    res.status(HTTP_STATUS.OK).json({ message: 'Venue review deleted successfully' })
+  } catch (error) {
+    const status = error.message === 'Unauthorized' ? HTTP_STATUS.FORBIDDEN : HTTP_STATUS.BAD_REQUEST
+    res.status(status).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -425,6 +471,10 @@ module.exports = {
   getVenueDetails: getVenueDetailsController,
   writeVenueReview,
   writeReview,
+  editReview: editReviewController,
+  deleteReview: deleteReviewController,
+  editVenueReview: editVenueReviewController,
+  deleteVenueReview: deleteVenueReviewController,
   getProfile,
   getSimilarProducts: getSimilarProductsController,
   getPublishedBlogs: getPublishedBlogsController,

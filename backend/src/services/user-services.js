@@ -1084,4 +1084,74 @@ const getSimilarProducts = async (productId, limit = 8) => {
   return similar
 }
 
-module.exports = {getProfileService, sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, getVenuesForUsers, getVenueDetails, createReview, createVenueReview, getSimilarProducts, getPublishedBlogs, getBlogBySlug }
+const editReview = async (userId, reviewId, reviewText, rating) => {
+  const Review = require('../models/review-model')
+  const mongoose = require('mongoose')
+  if (!mongoose.Types.ObjectId.isValid(reviewId)) throw new Error('Invalid review ID')
+  const review = await Review.findById(reviewId)
+  if (!review) throw new Error('Review not found')
+  if (review.user.toString() !== userId.toString()) throw new Error('Unauthorized')
+
+  const update = {}
+  if (reviewText) update.reviewText = reviewText
+  if (rating !== undefined) {
+    const parsed = Number(rating)
+    if (parsed < 1 || parsed > 5) throw new Error('Rating must be between 1 and 5')
+    update.rating = parsed
+  }
+
+  if (Object.keys(update).length === 0) throw new Error('Provide reviewText or rating to update')
+  return await Review.findByIdAndUpdate(reviewId, { $set: update }, { new: true })
+}
+
+const deleteReview = async (userId, reviewId) => {
+  const Review = require('../models/review-model')
+  const Product = require('../models/product-model')
+  const mongoose = require('mongoose')
+  if (!mongoose.Types.ObjectId.isValid(reviewId)) throw new Error('Invalid review ID')
+  const review = await Review.findById(reviewId)
+  if (!review) throw new Error('Review not found')
+  if (review.user.toString() !== userId.toString()) throw new Error('Unauthorized')
+  await Review.findByIdAndDelete(reviewId)
+  const stats = await Review.aggregate([
+    { $match: { product: new mongoose.Types.ObjectId(review.product) } },
+    { $group: { _id: '$product', avgRating: { $avg: '$rating' }, numReviews: { $sum: 1 } } }
+  ])
+  await Product.findByIdAndUpdate(review.product, {
+    averageRating: stats.length > 0 ? stats[0].avgRating : 0,
+    numReviews: stats.length > 0 ? stats[0].numReviews : 0
+  })
+}
+
+const editVenueReview = async (userId, reviewId, reviewText, rating) => {
+  const VenueReview = require('../models/venue-review-model')
+  const mongoose = require('mongoose')
+  if (!mongoose.Types.ObjectId.isValid(reviewId)) throw new Error('Invalid review ID')
+  const review = await VenueReview.findById(reviewId)
+  if (!review) throw new Error('Review not found')
+  if (review.user.toString() !== userId.toString()) throw new Error('Unauthorized')
+
+  const update = {}
+  if (reviewText) update.reviewText = reviewText
+  if (rating !== undefined) {
+    const parsed = Number(rating)
+    if (parsed < 1 || parsed > 5) throw new Error('Rating must be between 1 and 5')
+    update.rating = parsed
+  }
+
+  if (Object.keys(update).length === 0) throw new Error('Provide reviewText or rating to update')
+  return await VenueReview.findByIdAndUpdate(reviewId, { $set: update }, { new: true })
+}
+
+const deleteVenueReview = async (userId, reviewId) => {
+  const VenueReview = require('../models/venue-review-model')
+  const mongoose = require('mongoose')
+  if (!mongoose.Types.ObjectId.isValid(reviewId)) throw new Error('Invalid review ID')
+  const review = await VenueReview.findById(reviewId)
+  if (!review) throw new Error('Review not found')
+  if (review.user.toString() !== userId.toString()) throw new Error('Unauthorized')
+  await VenueReview.findByIdAndDelete(reviewId)
+}
+
+module.exports = {getProfileService, sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, getVenuesForUsers, getVenueDetails, createReview, createVenueReview, editReview, deleteReview, editVenueReview, deleteVenueReview, getSimilarProducts, getPublishedBlogs, getBlogBySlug }
+
