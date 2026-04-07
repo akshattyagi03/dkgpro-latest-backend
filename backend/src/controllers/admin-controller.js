@@ -187,8 +187,9 @@ const logout = async (req, res) => {
 
 const createCategoryTree = async (req, res) => {
   try {
-    const result = await createCategoryHierarchy(req.body)
-    res.status(201).json({ message: 'Category hierarchy created successfully', result })
+    await createCategoryHierarchy(req.body)
+    const categoryTree = await getCategoryTree()
+    res.status(201).json({ message: 'Category hierarchy created successfully', categoryTree })
   } catch (error) {
     res.status(400).json({ message: error.message })
   }

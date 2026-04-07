@@ -304,8 +304,8 @@ const removeFromWishlistController = async (req, res) => {
 
 const getAllMainCategoriesController = async (req, res) => {
   try {
-    const categories = await getAllMainCategories()
-    res.status(HTTP_STATUS.OK).json(categories)
+    const categoryTree = await getAllMainCategories()
+    res.status(HTTP_STATUS.OK).json({ categoryTree })
   } catch (error) {
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: error.message })
   }
