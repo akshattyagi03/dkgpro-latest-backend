@@ -131,6 +131,64 @@ const createReview = async (userId, productId, reviewText, rating, images = []) 
 
   return review;
 };
+
+const createVenueReview = async (userId, venueId, reviewText, rating, images = []) => {
+  const VenueReview = require('../models/venue-review-model');
+  const Venue = require('../models/venue-model');
+  const mongoose = require('mongoose');
+
+  if (!reviewText || !rating) {
+    throw new Error('Review text and rating are required');
+  }
+
+  if (rating < 1 || rating > 5) {
+    throw new Error('Rating must be between 1 and 5');
+  }
+
+  const existingReview = await VenueReview.findOne({
+    user: userId,
+    venue: venueId,
+  });
+
+  if (existingReview) {
+    throw new Error('You have already reviewed this venue');
+  }
+
+  const venue = await Venue.findById(venueId)
+  if (!venue) {
+    throw new Error('Venue not found')
+  }
+
+  const review = await VenueReview.create({
+    user: userId,
+    venue: venueId,
+    reviewText,
+    rating,
+    images
+  });
+
+  const stats = await VenueReview.aggregate([
+    { $match: { venue: new mongoose.Types.ObjectId(venueId) } },
+    { $group: { _id: '$venue', avgRating: { $avg: '$rating' }, numReviews: { $sum: 1 } } }
+  ]);
+
+  if (stats.length > 0) {
+    venue.ratings.average = stats[0].avgRating
+    venue.ratings.count = stats[0].numReviews
+  } else {
+    venue.ratings.average = 0
+    venue.ratings.count = 0
+  }
+
+  venue.reviews.push({
+    user: userId,
+    rating,
+    comment: reviewText
+  });
+
+  await venue.save()
+  return review;
+};
 const getProfileService = async (userId) => {
   const User = require('../models/user-model');
   const Review = require('../models/review-model');
@@ -935,6 +993,17 @@ const getVenuesForUsers = async (page = 1, limit = 10) => {
   }
 }
 
+const getVenueDetails = async (venueId) => {
+  const Venue = require('../models/venue-model')
+  const VenueReview = require('../models/venue-review-model')
+  const venue = await Venue.findById(venueId)
+  if (!venue) throw new Error('Venue not found')
+  const reviews = await VenueReview.find({ venue: venueId })
+    .populate('user', 'fullName')
+    .sort({ createdAt: -1 })
+  return { venue, reviews }
+}
+
 const raiseInquiry = async (inquiryData) => {
   const Inquiry = require('../models/inquiry-model')
   const { fullName, mobileNo, eventType, startDate, endDate, startTime, endTime, guests, requirements, venue } = inquiryData
@@ -1015,4 +1084,4 @@ const getSimilarProducts = async (productId, limit = 8) => {
   return similar
 }
 
-module.exports = {getProfileService, sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, getVenuesForUsers, createReview, getSimilarProducts, getPublishedBlogs, getBlogBySlug }
+module.exports = {getProfileService, sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, getVenuesForUsers, getVenueDetails, createReview, createVenueReview, getSimilarProducts, getPublishedBlogs, getBlogBySlug }

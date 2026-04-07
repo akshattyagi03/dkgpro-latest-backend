@@ -52,6 +52,8 @@ router.post('/add-to-wishlist', isLoggedIn, userController.addToWishlist)
 router.delete('/remove-from-wishlist', isLoggedIn, userController.removeFromWishlist)
 //get venues
 router.get('/get-venues', userController.getVenues)
+//get single venue details
+router.get('/venue/:venueId', userController.getVenueDetails)
 //raise an enquiry
 router.post('/raise-inquiry', userController.raiseInquiry)
 //track product interest
@@ -62,6 +64,8 @@ router.get('/main-categories', userController.getAllMainCategories)
 router.get('/birthday-packages-by-city', userController.getBirthdayPackagesByCity)
 //write review
 router.post('/write-review', isLoggedIn, upload.array('images', 5), userController.writeReview)
+//write venue review
+router.post('/venue/:venueId/review', isLoggedIn, upload.array('images', 5), userController.writeVenueReview)
 //get profile
 router.get('/profile', isLoggedIn, userController.getProfile)
 //get all published blogs

@@ -27,7 +27,9 @@ const {
   trackProductInterest,
   raiseInquiry,
   getVenuesForUsers,
+  getVenueDetails,
   createReview,
+  createVenueReview,
   getProfileService,
   getSimilarProducts,
   getPublishedBlogs,
@@ -333,6 +335,26 @@ const getVenuesController = async (req, res) => {
   }
 }
 
+const getVenueDetailsController = async (req, res) => {
+  try {
+    const venue = await getVenueDetails(req.params.venueId)
+    res.status(HTTP_STATUS.OK).json(venue)
+  } catch (error) {
+    res.status(HTTP_STATUS.NOT_FOUND).json({ message: error.message })
+  }
+}
+
+const writeVenueReview = async (req, res) => {
+  try {
+    const { reviewText, rating } = req.body
+    const images = req.files ? req.files.map(file => file.path) : []
+    const review = await createVenueReview(req.user._id, req.params.venueId, reviewText, rating, images)
+    res.status(HTTP_STATUS.CREATED).json({ message: 'Review submitted successfully', review })
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
 const raiseInquiryController = async (req, res) => {
   try {
     const inquiry = await raiseInquiry(req.body)
@@ -400,6 +422,8 @@ module.exports = {
   trackInterest: trackInterestController,
   raiseInquiry: raiseInquiryController,
   getVenues: getVenuesController,
+  getVenueDetails: getVenueDetailsController,
+  writeVenueReview,
   writeReview,
   getProfile,
   getSimilarProducts: getSimilarProductsController,
