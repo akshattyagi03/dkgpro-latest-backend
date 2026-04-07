@@ -17,7 +17,7 @@ Role-based REST API for an e-commerce style application with wedding services fo
 ---
 
 ## About
-DKGPro provides user accounts, product management, blog system, and role-based admin functionality. Roles supported:
+DKGPro provides user accounts, product management, blog system, payment processing, and role-based admin functionality. Roles supported:
 - **user** — regular customer
 - **admin** — manages products, categories, blogs (requires super-admin approval)
 - **super-admin** — manages admins, approves admin accounts, system-wide product management
@@ -33,6 +33,8 @@ Create a `.env` file with:
 MONGODB_URI=mongodb://localhost:27017/dkgpro
 JWT_SECRET_KEY=your_jwt_secret_key
 PORT=6969
+RAZORPAY_KEY_ID=your_razorpay_key_id
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
 ```
 
 ## Running the project
@@ -274,7 +276,50 @@ Base URL: `/users`
 - **Description:** Remove product from wishlist
 - **Success:** 200 OK with updated wishlist
 
-### 21. Logout
+### 21. Create Order
+- **Method:** POST
+- **Endpoint:** `/users/create-order`
+- **Auth:** user cookie
+- **Description:** Create a Razorpay order for payment
+- **Body:**
+```json
+{
+  "totalAmount": 50000,
+  "shippingAddress": {
+    "street": "123 Main St",
+    "city": "Mumbai",
+    "state": "Maharashtra",
+    "zipCode": "400001",
+    "country": "India"
+  }
+}
+```
+- **Success:** 200 OK with order details including Razorpay order ID
+
+### 22. Verify Payment
+- **Method:** POST
+- **Endpoint:** `/users/verify-payment`
+- **Auth:** user cookie
+- **Description:** Verify payment after successful Razorpay transaction
+- **Body:** Razorpay payment verification data
+- **Success:** 200 OK with payment confirmation
+
+### 23. Get Order History
+- **Method:** GET
+- **Endpoint:** `/users/orders`
+- **Auth:** user cookie
+- **Description:** Get user's order history with pagination
+- **Query Parameters:** `page`, `limit`
+- **Success:** 200 OK with orders array
+
+### 24. Get Order Details
+- **Method:** GET
+- **Endpoint:** `/users/order/{orderId}`
+- **Auth:** user cookie
+- **Description:** Get detailed information about a specific order
+- **Success:** 200 OK with complete order details
+
+### 25. Logout
 - **Method:** GET
 - **Endpoint:** `/users/logout`
 - **Auth:** user cookie
@@ -835,6 +880,11 @@ Products include:
 - Regular cities have direct city → districts mapping
 - Located at: `/src/utils/cities-districts.json`
 - Usage: Delhi NCR → Delhi → Shahdara
+
+### Payment Integration
+- Razorpay integration for secure payment processing
+- Order creation, payment verification, and order history
+- Support for cart checkout and order management
 
 ## Implementation notes
 - Cookie-based JWT authentication with httpOnly cookies

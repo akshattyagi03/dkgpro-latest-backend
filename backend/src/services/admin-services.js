@@ -907,6 +907,135 @@ const addHeroBanner = async (bannerData, adminId) => {
   return banner.populate('subCategory')
 }
 
+const getAdminOrders = async (adminId, page = 1, limit = 10) => {
+  const Order = require('../models/order-model')
+  const pageNum = parseInt(page) || 1
+  const limitNum = Math.min(parseInt(limit) || 10, 50)
+  const skip = (pageNum - 1) * limitNum
+
+  // get only orders containing products added by this admin
+  const Product = require('../models/product-model')
+  const adminProducts = await Product.find({ addedBy: adminId }).select('_id')
+  const adminProductIds = adminProducts.map(p => p._id)
+
+  const query = { 'items.product': { $in: adminProductIds } }
+
+  const orders = await Order.find(query)
+    .skip(skip)
+    .limit(limitNum)
+    .sort({ createdAt: -1 })
+    .populate('user', 'fullName email')
+    .populate('items.product', 'name price')
+
+  const total = await Order.countDocuments(query)
+
+  const formatted = orders.map(o => ({
+    id: o._id,
+    orderNumber: `ORD-${o._id.toString().slice(-6).toUpperCase()}`,
+    userName: o.user?.fullName || 'N/A',
+    userEmail: o.user?.email || 'N/A',
+    items: o.items,
+    total: o.totalAmount,
+    status: o.status,
+    updatedAt: o.updatedAt
+  }))
+
+  return {
+    orders: formatted,
+    pagination: {
+      currentPage: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+      totalOrders: total,
+      hasNext: pageNum < Math.ceil(total / limitNum),
+      hasPrev: pageNum > 1
+    }
+  }
+}
+
+const updateOrderStatus = async (orderId, status) => {
+  const Order = require('../models/order-model')
+  const validStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']
+  if (!validStatuses.includes(status)) throw new Error('Invalid status')
+
+  const order = await Order.findByIdAndUpdate(orderId, { status }, { new: true })
+    .populate('user', 'fullName email')
+    .populate('items.product', 'name price')
+  if (!order) throw new Error('Order not found')
+  return order
+}
+
+const getAdminAnalytics = async (adminId) => {
+  const Order = require('../models/order-model')
+  const Product = require('../models/product-model')
+  const User = require('../models/user-model')
+
+  const adminProducts = await Product.find({ addedBy: adminId }).select('_id name price')
+  const adminProductIds = adminProducts.map(p => p._id)
+  const query = { 'items.product': { $in: adminProductIds } }
+
+  const allOrders = await Order.find(query).populate('items.product', 'name price')
+
+  const totalRevenue = allOrders.reduce((sum, o) => sum + o.totalAmount, 0)
+  const totalOrders = allOrders.length
+  const totalUsers = await User.countDocuments()
+
+  // orders by status
+  const statusMap = {}
+  allOrders.forEach(o => {
+    statusMap[o.status] = (statusMap[o.status] || 0) + 1
+  })
+  const ordersByStatus = Object.entries(statusMap).map(([status, count]) => ({ status, count }))
+
+  // sales trend — last 6 months grouped by month
+  const sixMonthsAgo = new Date()
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+  const recentOrders = allOrders.filter(o => new Date(o.createdAt) >= sixMonthsAgo)
+  const salesByMonth = {}
+  recentOrders.forEach(o => {
+    const key = new Date(o.createdAt).toLocaleString('default', { month: 'short', year: '2-digit' })
+    salesByMonth[key] = (salesByMonth[key] || 0) + o.totalAmount
+  })
+  const salesTrend = Object.entries(salesByMonth).map(([date, revenue]) => ({ date, revenue }))
+
+  // user growth — last 6 months
+  const allUsers = await User.find({ createdAt: { $gte: sixMonthsAgo } }).select('createdAt')
+  const usersByMonth = {}
+  allUsers.forEach(u => {
+    const key = new Date(u.createdAt).toLocaleString('default', { month: 'short', year: '2-digit' })
+    usersByMonth[key] = (usersByMonth[key] || 0) + 1
+  })
+  const userGrowth = Object.entries(usersByMonth).map(([date, users]) => ({ date, users }))
+
+  // top products by revenue
+  const productRevenue = {}
+  const productSales = {}
+  allOrders.forEach(o => {
+    o.items.forEach(item => {
+      if (!item.product) return
+      const id = item.product._id.toString()
+      const name = item.product.name
+      productRevenue[id] = { name, revenue: (productRevenue[id]?.revenue || 0) + item.price * item.quantity }
+      productSales[id] = (productSales[id] || 0) + item.quantity
+    })
+  })
+  const topProducts = Object.entries(productRevenue)
+    .map(([id, { name, revenue }]) => ({ name, revenue, sales: productSales[id] }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5)
+
+  return {
+    totalRevenue,
+    revenueGrowth: 0,
+    totalOrders,
+    ordersGrowth: 0,
+    totalUsers,
+    salesTrend,
+    ordersByStatus,
+    userGrowth,
+    topProducts
+  }
+}
+
 module.exports = {
   sendAdminOTP,
   verifyAdminOTP,
@@ -930,6 +1059,9 @@ module.exports = {
   toggleProductTier,
   addVenue,
   getVenues,
+  getAdminOrders,
+  updateOrderStatus,
+  getAdminAnalytics,
   getBlogs,
   editBlog,
   deleteBlog,

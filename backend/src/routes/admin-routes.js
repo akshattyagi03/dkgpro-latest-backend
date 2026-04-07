@@ -58,6 +58,12 @@ router.get("/blogs", isAdmin, adminController.getAdminBlogs)
 router.put("/edit-blog/:blogId", isAdmin, upload.single('featuredImage'), adminController.updateBlog)
 //delete blogs
 router.delete("/delete-blog/:blogId", isAdmin, adminController.removeBlog)
+//get orders
+router.get("/orders", isAdmin, adminController.getOrders)
+//update order status
+router.put("/orders/:orderId/status", isAdmin, adminController.updateOrderStatus)
+//get analytics
+router.get("/analytics", isAdmin, adminController.getAnalytics)
 //logout admin
 router.get("/logout", isAdmin, adminController.logout)
 //create additional category 

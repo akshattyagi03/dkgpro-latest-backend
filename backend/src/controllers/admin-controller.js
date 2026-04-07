@@ -22,6 +22,9 @@ const {
   toggleProductTier,
   addVenue,
   getVenues,
+  getAdminOrders,
+  updateOrderStatus,
+  getAdminAnalytics,
   getBlogs, 
   editBlog, 
   deleteBlog,
@@ -364,6 +367,33 @@ const addHeroBannerController = async (req, res) => {
   }
 }
 
+const getOrdersController = async (req, res) => {
+  try {
+    const result = await getAdminOrders(req.admin._id, req.query.page, req.query.limit)
+    res.status(200).json(result)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const updateOrderStatusController = async (req, res) => {
+  try {
+    const order = await updateOrderStatus(req.params.orderId, req.body.status)
+    res.status(200).json({ message: 'Order status updated', order })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const getAnalyticsController = async (req, res) => {
+  try {
+    const analytics = await getAdminAnalytics(req.admin._id)
+    res.status(200).json(analytics)
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -387,6 +417,9 @@ module.exports = {
   toggleTier,
   createVenue,
   getAllVenues,
+  getOrders: getOrdersController,
+  updateOrderStatus: updateOrderStatusController,
+  getAnalytics: getAnalyticsController,
   createNewBlog,
   getAdminBlogs,
   updateBlog,
