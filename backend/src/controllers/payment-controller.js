@@ -3,15 +3,21 @@ const { HTTP_STATUS } = require('../utils/constants');
 
 const createOrderController = async (req, res) => {
   try {
-    const { totalAmount, shippingAddress } = req.body;
+    const { totalAmount, shippingAddress, cartSnapshot } = req.body;
 
-    if (!totalAmount || !shippingAddress) {
+    if (!shippingAddress) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
-        message: 'Total amount and shipping address are required'
+        message: 'Shipping address is required'
       });
     }
 
-    const result = await createOrder(req.user._id, { totalAmount, shippingAddress });
+    if (!cartSnapshot && (!totalAmount || Number(totalAmount) <= 0)) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        message: 'Total amount is required when cart snapshot is not sent'
+      });
+    }
+
+    const result = await createOrder(req.user._id, { totalAmount, shippingAddress, cartSnapshot });
     res.status(HTTP_STATUS.OK).json(result);
   } catch (error) {
     const message = error.message || JSON.stringify(error) || 'Something went wrong';

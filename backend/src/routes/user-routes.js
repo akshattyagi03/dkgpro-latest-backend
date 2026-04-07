@@ -2,6 +2,7 @@ const express = require('express')
 const { isLoggedIn } = require('../middleware/auth')
 const userController = require('../controllers/user-controller')
 const paymentController = require('../controllers/payment-controller')
+const { wrapUpload } = require('../middleware/multer-upload-error')
 const upload = require('../../configuration/multer-config')
 const router = express.Router()
 //registration otp
@@ -50,6 +51,8 @@ router.get('/wishlist', isLoggedIn, userController.getWishlist)
 router.post('/add-to-wishlist', isLoggedIn, userController.addToWishlist)
 //remove from wishlist
 router.delete('/remove-from-wishlist', isLoggedIn, userController.removeFromWishlist)
+// single venue (must be before /get-venues to avoid param capturing "get-venues" as id — not an issue; order is for clarity)
+router.get('/get-venues/:venueId', userController.getVenueById)
 //get venues
 router.get('/get-venues', userController.getVenues)
 //get single venue details
@@ -65,7 +68,7 @@ router.get('/birthday-packages-by-city', userController.getBirthdayPackagesByCit
 //write review
 router.post('/write-review', isLoggedIn, upload.array('images', 5), userController.writeReview)
 //write venue review
-router.post('/venue/:venueId/review', isLoggedIn, upload.array('images', 5), userController.writeVenueReview)
+router.post('/venue/:venueId/review', isLoggedIn, wrapUpload(upload.array('images', 5)), userController.writeVenueReview)
 //edit venue review
 router.put('/venue-review/:reviewId', isLoggedIn, userController.editVenueReview)
 //delete venue review

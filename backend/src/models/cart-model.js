@@ -1,5 +1,12 @@
 const mongoose = require('mongoose');
 
+const cartAddonLineSchema = new mongoose.Schema({
+  sectionName: { type: String, trim: true },
+  addonName: { type: String, trim: true },
+  quantity: { type: Number, min: 1, default: 1 },
+  lineTotal: { type: Number, min: 0 }
+}, { _id: false });
+
 const cartItemSchema = new mongoose.Schema({
   product: {
     type: mongoose.Schema.Types.ObjectId,
@@ -11,6 +18,10 @@ const cartItemSchema = new mongoose.Schema({
     required: true,
     min: 1,
     default: 1
+  },
+  bookingAddonLines: {
+    type: [cartAddonLineSchema],
+    default: []
   }
 });
 

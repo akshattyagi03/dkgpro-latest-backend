@@ -668,6 +668,57 @@ const getFilteredProducts = async (filters) => {
   }
 }
 
+/**
+ * Replace user cart from checkout snapshot (product ids, quantities, optional addon lines).
+ * Used by guest checkout so totals match customization add-ons.
+ */
+const syncCheckoutCart = async (userId, rawItems) => {
+  const Cart = require('../models/cart-model')
+  const Product = require('../models/product-model')
+  if (!Array.isArray(rawItems) || rawItems.length === 0) {
+    throw new Error('Cart snapshot is required')
+  }
+  if (rawItems.length > 40) {
+    throw new Error('Too many line items')
+  }
+  let cart = await Cart.findOne({ user: userId })
+  if (!cart) {
+    cart = new Cart({ user: userId, items: [] })
+  }
+  const newItems = []
+  for (const row of rawItems) {
+    const productId = row.productId
+    if (!productId) throw new Error('Each item needs productId')
+    const product = await Product.findById(productId)
+    if (!product) throw new Error('Product not found')
+    let quantity = parseInt(row.quantity, 10)
+    if (!Number.isFinite(quantity) || quantity < 1) quantity = 1
+    if (quantity > 99) quantity = 99
+    const bookingAddonLines = []
+    if (Array.isArray(row.bookingAddonLines)) {
+      for (const l of row.bookingAddonLines.slice(0, 40)) {
+        const lt = Number(l.lineTotal)
+        if (!Number.isFinite(lt) || lt < 0 || lt > 2_000_000) continue
+        bookingAddonLines.push({
+          sectionName: String(l.sectionName || '').slice(0, 220),
+          addonName: String(l.addonName || '').slice(0, 220),
+          quantity: Math.min(Math.max(parseInt(l.quantity, 10) || 1, 1), 999),
+          lineTotal: Math.round(lt * 100) / 100
+        })
+      }
+    }
+    newItems.push({
+      product: product._id,
+      quantity,
+      bookingAddonLines
+    })
+  }
+  cart.items = newItems
+  cart.totalItems = newItems.reduce((sum, item) => sum + item.quantity, 0)
+  await cart.save()
+  return cart
+}
+
 const addToCart = async (userId, productId) => {
   const Cart = require('../models/cart-model')
   const Product = require('../models/product-model')
@@ -941,7 +992,11 @@ const getVenuesForUsers = async (page = 1, limit = 10) => {
   const limitNum = Math.min(parseInt(limit) || 10, 50)
   const skip = (pageNum - 1) * limitNum
 
-  const venues = await Venue.find().select('name description images').skip(skip).limit(limitNum).sort({ createdAt: -1 })
+  const venues = await Venue.find()
+    .select('name description images typesOfVenues facilities startingPrice location createdAt')
+    .skip(skip)
+    .limit(limitNum)
+    .sort({ createdAt: -1 })
   const total = await Venue.countDocuments()
 
   return {
@@ -969,9 +1024,49 @@ const getVenueDetails = async (venueId) => {
 
 const raiseInquiry = async (inquiryData) => {
   const Inquiry = require('../models/inquiry-model')
-  const { fullName, mobileNo, eventType, startDate, endDate, startTime, endTime, guests, requirements, venue } = inquiryData
+  const {
+    fullName: fn,
+    mobileNo: mob,
+    eventType: et,
+    startDate: sd,
+    endDate: ed,
+    startTime: st,
+    endTime: en,
+    guests: g,
+    requirements: req,
+    venue: v
+  } = inquiryData
 
-  const inquiry = new Inquiry({ fullName, mobileNo, eventType, startDate, endDate, startTime, endTime, guests, requirements, venue })
+  const fullName = String(fn ?? '').trim()
+  const mobileNo = String(mob ?? '').trim()
+  const eventType = String(et ?? '').trim()
+  const startTime = String(st ?? '').trim()
+  const endTime = String(en ?? '').trim()
+  const guests = Number(g)
+  const requirements = req != null && String(req).trim() !== '' ? String(req).trim().slice(0, 1000) : undefined
+  const startDate = new Date(sd)
+  const endDate = new Date(ed)
+  const venue = v != null && String(v).trim() !== '' ? String(v).trim() : undefined
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    throw new Error('Invalid start or end date')
+  }
+  if (Number.isNaN(guests) || guests < 1) {
+    throw new Error('Guests must be a positive number')
+  }
+
+  const inquiry = new Inquiry({
+    fullName,
+    mobileNo,
+    eventType,
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    guests,
+    requirements,
+    venue
+  })
   await inquiry.save()
   return inquiry
 }
@@ -1028,13 +1123,17 @@ const getSimilarProducts = async (productId, limit = 8) => {
   const product = await Product.findById(productId).select('thirdCategory serviceableAreas')
   if (!product) throw new Error('Product not found')
 
-  const cities = product.serviceableAreas.map(a => a.city)
+  const cities = (product.serviceableAreas || []).map(a => a.city).filter(Boolean)
 
-  const similar = await Product.find({
+  const similarQuery = {
     _id: { $ne: product._id },
     thirdCategory: product.thirdCategory,
-    'serviceableAreas.city': { $in: cities }
-  })
+  }
+  if (cities.length > 0) {
+    similarQuery['serviceableAreas.city'] = { $in: cities }
+  }
+
+  const similar = await Product.find(similarQuery)
     .limit(limit)
     .sort({ isFeatured: -1, createdAt: -1 })
     .populate('mainCategory')
@@ -1116,5 +1215,5 @@ const deleteVenueReview = async (userId, reviewId) => {
   await VenueReview.findByIdAndDelete(reviewId)
 }
 
-module.exports = {getProfileService, sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, getVenuesForUsers, getVenueDetails, createReview, createVenueReview, editReview, deleteReview, editVenueReview, deleteVenueReview, getSimilarProducts, getPublishedBlogs, getBlogBySlug }
+module.exports = {getProfileService, sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, syncCheckoutCart, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, getVenuesForUsers, getVenueDetails, createReview, createVenueReview, editReview, deleteReview, editVenueReview, deleteVenueReview, getSimilarProducts, getPublishedBlogs, getBlogBySlug }
 

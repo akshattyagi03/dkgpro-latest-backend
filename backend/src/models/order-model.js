@@ -1,5 +1,12 @@
 const mongoose = require('mongoose');
 
+const orderAddonLineSchema = new mongoose.Schema({
+  sectionName: String,
+  addonName: String,
+  quantity: Number,
+  lineTotal: Number
+}, { _id: false });
+
 const orderItemSchema = new mongoose.Schema({
   product: {
     type: mongoose.Schema.Types.ObjectId,
@@ -14,6 +21,10 @@ const orderItemSchema = new mongoose.Schema({
   price: {
     type: Number,
     required: true
+  },
+  bookingAddonLines: {
+    type: [orderAddonLineSchema],
+    default: undefined
   }
 });
 

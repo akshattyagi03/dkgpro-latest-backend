@@ -33,6 +33,8 @@ const {
   addHeroBanner
 } = require('../services/admin-services')
 
+const multerUpload = require('../../configuration/multer-config')
+
 const sendOTP = async (req, res) => {
   try {
     const result = await sendAdminOTP(req.body)
@@ -66,7 +68,9 @@ const getHome = (req, res) => {
 
 const addProduct = async (req, res) => {
   try {
-    const images = req.files ? req.files.map(f => f.path) : req.body.images || []
+    const images = req.files
+      ? req.files.map((f) => multerUpload.getStoredFileUrl(f))
+      : req.body.images || []
     const product = await addProducts({ ...req.body, images }, req.admin._id)
     res.status(201).json({ message: 'Product added successfully', product })
   } catch (error) {
@@ -103,7 +107,7 @@ const createMainCategory = async (req, res) => {
 
 const createSubCategory = async (req, res) => {
   try {
-    const bannerImage = req.file ? req.file.path : undefined
+    const bannerImage = multerUpload.getStoredFileUrl(req.file)
     const subCategory = await addSubCategory({ ...req.body, bannerImage })
     res.status(201).json({ message: 'Sub category added successfully', subCategory })
   } catch (error) {
@@ -113,7 +117,7 @@ const createSubCategory = async (req, res) => {
 
 const createThirdCategory = async (req, res) => {
   try {
-    const bannerImage = req.file ? req.file.path : undefined
+    const bannerImage = multerUpload.getStoredFileUrl(req.file)
     const thirdCategory = await addThirdCategory({ ...req.body, bannerImage })
     res.status(201).json({ message: 'Third category added successfully', thirdCategory })
   } catch (error) {
@@ -123,7 +127,7 @@ const createThirdCategory = async (req, res) => {
 
 const createNewBlog = async (req, res) => {
   try {
-    const image = req.file ? req.file.path : req.body.featuredImage
+    const image = req.file ? multerUpload.getStoredFileUrl(req.file) : req.body.featuredImage
     const blog = await createBlog({ ...req.body, image }, req.admin._id)
     res.status(201).json({ message: 'Blog created successfully', blog })
   } catch (error) {
@@ -142,7 +146,7 @@ const getAdminBlogs = async (req, res) => {
 
 const updateBlog = async (req, res) => {
   try {
-    const image = req.file ? req.file.path : undefined
+    const image = req.file ? multerUpload.getStoredFileUrl(req.file) : undefined
     const updateData = image ? { ...req.body, image } : req.body
     const blog = await editBlog(req.params.blogId, req.admin._id, updateData)
     res.status(200).json({ message: 'Blog updated successfully', blog })
@@ -195,10 +199,86 @@ const createCategoryTree = async (req, res) => {
   }
 }
 
+/** Parse nested JSON / comma-lists from multipart fields for add-venue. */
+function normalizeVenueMultipartBody(body) {
+  const out = { ...body }
+  const parseMaybeJson = (v) => {
+    if (v == null || v === '') return undefined
+    if (typeof v === 'object' && v !== null && !Array.isArray(v)) return v
+    if (typeof v !== 'string') return v
+    try {
+      return JSON.parse(v)
+    } catch {
+      return v
+    }
+  }
+
+  let imagesFromBody = out.images
+  if (typeof imagesFromBody === 'string') {
+    try {
+      imagesFromBody = JSON.parse(imagesFromBody)
+    } catch {
+      imagesFromBody = []
+    }
+  }
+  if (!Array.isArray(imagesFromBody)) {
+    imagesFromBody = imagesFromBody ? [imagesFromBody] : []
+  }
+  delete out.images
+
+  out.location = parseMaybeJson(out.location)
+  if (!out.location || typeof out.location !== 'object' || !out.location.address) {
+    const addr = out.address
+    if (addr) {
+      out.location = {
+        address: String(addr),
+        lat: out.lat !== '' && out.lat != null ? Number(out.lat) : undefined,
+        lng: out.lng !== '' && out.lng != null ? Number(out.lng) : undefined
+      }
+    }
+  }
+
+  out.capacity = parseMaybeJson(out.capacity)
+  out.otherInformation = parseMaybeJson(out.otherInformation)
+
+  const arrField = (key) => {
+    const parsed = parseMaybeJson(out[key])
+    if (Array.isArray(parsed)) {
+      out[key] = parsed.map(String).filter(Boolean)
+      return
+    }
+    if (typeof out[key] === 'string') {
+      out[key] = out[key].split(',').map((s) => s.trim()).filter(Boolean)
+      return
+    }
+    out[key] = []
+  }
+
+  arrField('typesOfVenues')
+  arrField('facilities')
+  arrField('accessibilityFeatures')
+  arrField('restrictions')
+  arrField('supportedEvents')
+
+  if (out.startingPrice != null && out.startingPrice !== '') {
+    out.startingPrice = Number(out.startingPrice)
+  }
+
+  delete out.address
+  delete out.lat
+  delete out.lng
+
+  return { normalized: out, imagesFromBody }
+}
+
 const createVenue = async (req, res) => {
   try {
-    const images = req.files ? req.files.map(f => f.path) : req.body.images || []
-    const venue = await addVenue({ ...req.body, images }, req.admin._id)
+    const fileUrls = req.files?.length
+      ? req.files.map((f) => multerUpload.getStoredFileUrl(f))
+      : []
+    const { normalized, imagesFromBody } = normalizeVenueMultipartBody(req.body)
+    const images = fileUrls.length ? fileUrls : imagesFromBody
+    const venue = await addVenue({ ...normalized, images }, req.admin._id)
     res.status(201).json({ message: 'Venue added successfully', venue })
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -225,7 +305,7 @@ const getCategoryTreeView = async (req, res) => {
 
 const createAddon = async (req, res) => {
   try {
-    const image = req.file ? req.file.path : req.body.image
+    const image = req.file ? multerUpload.getStoredFileUrl(req.file) : req.body.image
     const addon = await addAddon({ ...req.body, image })
     res.status(201).json({ message: 'Addon created successfully', addon })
   } catch (error) {
@@ -265,7 +345,7 @@ const createAdditionalCategory = async (req, res) => {
       description,
       parentName,
       parentModel,
-      bannerImage: req.file ? req.file.path : undefined
+      bannerImage: multerUpload.getStoredFileUrl(req.file)
     })
 
     return res.status(201).json({
@@ -361,7 +441,10 @@ const verifyPhoneLogin = async (req, res) => {
 const addHeroBannerController = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'Banner image is required' })
-    const banner = await addHeroBanner({ ...req.body, image: req.file.path }, req.admin._id)
+    const banner = await addHeroBanner(
+      { ...req.body, image: multerUpload.getStoredFileUrl(req.file) },
+      req.admin._id
+    )
     res.status(201).json({ message: 'Hero banner added successfully', banner })
   } catch (error) {
     res.status(400).json({ message: error.message })

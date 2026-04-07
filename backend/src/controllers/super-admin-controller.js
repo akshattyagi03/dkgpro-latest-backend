@@ -20,6 +20,8 @@ const {
   logoutSuperAdmin
 } = require('../services/super-admin-services')
 
+const multerUpload = require('../../configuration/multer-config')
+
 const sendOTP = async (req, res) => {
   try {
     const result = await sendSuperAdminOTP(req.body)
@@ -85,7 +87,10 @@ const getProducts = async (req, res) => {
 
 const updateProduct = async (req, res) => {
   try {
-    const images = req.files && req.files.length > 0 ? req.files.map(f => f.path) : undefined
+    const images =
+      req.files && req.files.length > 0
+        ? req.files.map((f) => multerUpload.getStoredFileUrl(f))
+        : undefined
     const updateData = images ? { ...req.body, images } : req.body
     const product = await editProduct(req.params.productId, updateData)
     res.status(200).json({ message: 'Product updated successfully', product })
@@ -127,7 +132,10 @@ const getVenues = async (req, res) => {
 
 const editVenue = async (req, res) => {
   try {
-    const images = req.files && req.files.length > 0 ? req.files.map(f => f.path) : undefined
+    const images =
+      req.files && req.files.length > 0
+        ? req.files.map((f) => multerUpload.getStoredFileUrl(f))
+        : undefined
     const updateData = images ? { ...req.body, images } : req.body
     const venue = await updateVenue(req.params.venueId, updateData)
     res.status(200).json({ message: 'Venue updated successfully', venue })

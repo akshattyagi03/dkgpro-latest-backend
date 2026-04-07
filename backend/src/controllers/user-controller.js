@@ -1,4 +1,5 @@
 const reviewModel = require('../models/review-model')
+const multerUpload = require('../../configuration/multer-config')
 const {
   sendUserOTP,
   verifyUserOTP,
@@ -263,6 +264,31 @@ const writeReview = async (req, res) => {
     });
   }
 };
+
+const writeVenueReview = async (req, res) => {
+  try {
+    const { venueId } = req.params;
+    const { reviewText, rating } = req.body;
+    const images = req.files
+      ? req.files.map((f) => multerUpload.getStoredFileUrl(f))
+      : [];
+
+    const review = await createVenueReview(
+      req.user._id,
+      venueId,
+      reviewText,
+      Number(rating),
+      images
+    );
+
+    res.status(HTTP_STATUS.CREATED).json({
+      message: 'Review submitted successfully',
+      review
+    });
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message });
+  }
+};
 const removeFromCartController = async (req, res) => {
   try {
     const { productId } = req.query
@@ -339,23 +365,41 @@ const getVenuesController = async (req, res) => {
   }
 }
 
-const getVenueDetailsController = async (req, res) => {
+/** Plain venue document — matches GET /users/get-venues/:venueId (guest detail). */
+const getVenueByIdController = async (req, res) => {
   try {
-    const venue = await getVenueDetails(req.params.venueId)
+    const { venue } = await getVenueDetails(req.params.venueId)
     res.status(HTTP_STATUS.OK).json(venue)
   } catch (error) {
-    res.status(HTTP_STATUS.NOT_FOUND).json({ message: error.message })
+    const msg = error.message || 'Failed to load venue'
+    if (msg === 'Venue not found') {
+      res.status(HTTP_STATUS.NOT_FOUND).json({ message: msg })
+      return
+    }
+    if (error.name === 'CastError') {
+      res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Invalid venue id' })
+      return
+    }
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: msg })
   }
 }
 
-const writeVenueReview = async (req, res) => {
+/** Venue + populated reviews — GET /users/venue/:venueId */
+const getVenueDetailsController = async (req, res) => {
   try {
-    const { reviewText, rating } = req.body
-    const images = req.files ? req.files.map(file => file.path) : []
-    const review = await createVenueReview(req.user._id, req.params.venueId, reviewText, rating, images)
-    res.status(HTTP_STATUS.CREATED).json({ message: 'Review submitted successfully', review })
+    const result = await getVenueDetails(req.params.venueId)
+    res.status(HTTP_STATUS.OK).json(result)
   } catch (error) {
-    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+    const msg = error.message || 'Failed to load venue'
+    if (msg === 'Venue not found') {
+      res.status(HTTP_STATUS.NOT_FOUND).json({ message: msg })
+      return
+    }
+    if (error.name === 'CastError') {
+      res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Invalid venue id' })
+      return
+    }
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: msg })
   }
 }
 
@@ -468,6 +512,7 @@ module.exports = {
   trackInterest: trackInterestController,
   raiseInquiry: raiseInquiryController,
   getVenues: getVenuesController,
+  getVenueById: getVenueByIdController,
   getVenueDetails: getVenueDetailsController,
   writeVenueReview,
   writeReview,

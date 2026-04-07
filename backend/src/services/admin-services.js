@@ -205,9 +205,30 @@ const addProducts = async (productData, adminId) => {
   return product
 }
 
+function normalizeBlogTags (tags) {
+  if (!tags && tags !== '') return []
+  if (Array.isArray(tags)) return tags.map((t) => String(t).trim()).filter(Boolean)
+  if (typeof tags === 'string') {
+    try {
+      const parsed = JSON.parse(tags)
+      if (Array.isArray(parsed)) return parsed.map((t) => String(t).trim()).filter(Boolean)
+    } catch (_) {
+      /* comma-separated */
+    }
+    return tags.split(',').map((t) => t.trim()).filter(Boolean)
+  }
+  return []
+}
+
+function normalizeBlogPublished (published) {
+  return published === true || published === 'true'
+}
+
 const createBlog = async (blogData, adminId) => {
   const Blog = require('../models/blog-model')
   const { title, content, tags, published, image, excerpt, category, metaTitle, metaDescription } = blogData
+  const tagsArr = normalizeBlogTags(tags)
+  const publishedFlag = normalizeBlogPublished(published)
 
   // auto-generate slug from title
   const baseSlug = title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
@@ -226,12 +247,12 @@ const createBlog = async (blogData, adminId) => {
     featuredImage: image || null,
     author: adminId,
     category,
-    tags: tags || [],
+    tags: tagsArr,
     readingTime,
     metaTitle: metaTitle || title,
     metaDescription: metaDescription || excerpt,
-    published: published || false,
-    publishedAt: published ? new Date() : null
+    published: publishedFlag,
+    publishedAt: publishedFlag ? new Date() : null
   })
 
   await blog.save()
@@ -571,12 +592,20 @@ const getBlogs = async (adminId) => {
   return blogs
 }
 
-const editBlog = async (blogId, adminId, updateData) => {
+const editBlog = async (blogId, adminId, updateDataRaw) => {
   const Blog = require('../models/blog-model')
+  const updateData = { ...updateDataRaw }
 
   const existingBlog = await Blog.findById(blogId)
   if (!existingBlog) throw new Error('Blog not found')
   if (existingBlog.author.toString() !== adminId.toString()) throw new Error('Unauthorized access')
+
+  if (Object.prototype.hasOwnProperty.call(updateData, 'tags')) {
+    updateData.tags = normalizeBlogTags(updateData.tags)
+  }
+  if (Object.prototype.hasOwnProperty.call(updateData, 'published')) {
+    updateData.published = normalizeBlogPublished(updateData.published)
+  }
 
   // recalculate reading time if content changed
   if (updateData.content) {
