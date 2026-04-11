@@ -26,6 +26,8 @@ const {
   getAdminOrders,
   updateOrderStatus,
   getAdminAnalytics,
+  getOrderForInvoice,
+  sendInvoiceToCustomer,
   getBlogs, 
   editBlog, 
   deleteBlog,
@@ -477,6 +479,46 @@ const getOrdersController = async (req, res) => {
   }
 }
 
+const viewInvoiceController = async (req, res) => {
+  try {
+    const { generateInvoicePDF } = require('../utils/email-service')
+    const order = await getOrderForInvoice(req.params.orderId, req.admin._id)
+    const pdfBuffer = await generateInvoicePDF(order)
+    const orderNumber = `ORD-${order._id.toString().slice(-6).toUpperCase()}`
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `inline; filename="Invoice-${orderNumber}.pdf"`)
+    res.send(pdfBuffer)
+  } catch (error) {
+    const status = error.message.startsWith('Unauthorized') ? 403 : 404
+    res.status(status).json({ message: error.message })
+  }
+}
+
+const downloadInvoiceController = async (req, res) => {
+  try {
+    const { generateInvoicePDF } = require('../utils/email-service')
+    const order = await getOrderForInvoice(req.params.orderId, req.admin._id)
+    const pdfBuffer = await generateInvoicePDF(order)
+    const orderNumber = `ORD-${order._id.toString().slice(-6).toUpperCase()}`
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename="Invoice-${orderNumber}.pdf"`)
+    res.send(pdfBuffer)
+  } catch (error) {
+    const status = error.message.startsWith('Unauthorized') ? 403 : 404
+    res.status(status).json({ message: error.message })
+  }
+}
+
+const sendInvoiceToCustomerController = async (req, res) => {
+  try {
+    const result = await sendInvoiceToCustomer(req.params.orderId, req.admin._id)
+    res.status(200).json({ message: 'Invoice sent to customer', ...result })
+  } catch (error) {
+    const status = error.message.startsWith('Unauthorized') ? 403 : 400
+    res.status(status).json({ message: error.message })
+  }
+}
+
 const updateOrderStatusController = async (req, res) => {
   try {
     const order = await updateOrderStatus(req.params.orderId, req.body.status)
@@ -520,6 +562,9 @@ module.exports = {
   createVenue,
   getAllVenues,
   getOrders: getOrdersController,
+  viewInvoice: viewInvoiceController,
+  downloadInvoice: downloadInvoiceController,
+  sendInvoiceToCustomer: sendInvoiceToCustomerController,
   updateOrderStatus: updateOrderStatusController,
   getAnalytics: getAnalyticsController,
   createNewBlog,

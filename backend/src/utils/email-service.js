@@ -585,4 +585,4 @@ const sendOrderNotificationToSuperAdmin = async (superAdminEmail, order) => {
   await transporter.sendMail(mailOptions)
 }
 
-module.exports = { sendOTP, sendOrderConfirmationEmail, sendOrderNotificationToSuperAdmin }
+module.exports = { sendOTP, sendOrderConfirmationEmail, sendOrderNotificationToSuperAdmin, generateInvoicePDF }

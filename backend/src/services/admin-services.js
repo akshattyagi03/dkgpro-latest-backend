@@ -952,6 +952,62 @@ const addHeroBanner = async (bannerData, adminId) => {
   return banner.populate('subCategory')
 }
 
+const getOrderForInvoice = async (orderId, adminId) => {
+  const Order = require('../models/order-model')
+  const Product = require('../models/product-model')
+
+  const order = await Order.findById(orderId)
+    .populate('user', 'fullName email phoneNumber')
+    .populate('items.product', 'name price images')
+
+  if (!order) throw new Error('Order not found')
+
+  // verify at least one item belongs to this admin
+  const adminProducts = await Product.find({ addedBy: adminId }).select('_id').lean()
+  const adminProductIds = adminProducts.map(p => p._id.toString())
+  const hasAccess = order.items.some(i => i.product && adminProductIds.includes(i.product._id.toString()))
+  if (!hasAccess) throw new Error('Unauthorized: this order does not contain your products')
+
+  return order
+}
+
+const sendInvoiceToCustomer = async (orderId, adminId) => {
+  const { generateInvoicePDF, sendOrderConfirmationEmail } = require('../utils/email-service')
+  const { sendInvoiceWhatsApp } = require('../utils/sms-service')
+
+  const order = await getOrderForInvoice(orderId, adminId)
+  const orderNumber = `ORD-${order._id.toString().slice(-6).toUpperCase()}`
+  const pdfBuffer = await generateInvoicePDF(order)
+
+  const results = { email: null, whatsapp: null }
+
+  // send email
+  if (order.user?.email) {
+    try {
+      await sendOrderConfirmationEmail(order.user.email, order)
+      results.email = 'sent'
+    } catch (err) {
+      results.email = `failed: ${err.message}`
+    }
+  } else {
+    results.email = 'skipped: no email on file'
+  }
+
+  // send whatsapp
+  if (order.user?.phoneNumber) {
+    try {
+      await sendInvoiceWhatsApp(order.user.phoneNumber, orderNumber, pdfBuffer)
+      results.whatsapp = 'sent'
+    } catch (err) {
+      results.whatsapp = `failed: ${err.message}`
+    }
+  } else {
+    results.whatsapp = 'skipped: no phone number on file'
+  }
+
+  return { orderNumber, results }
+}
+
 const getAdminOrders = async (adminId, page = 1, limit = 10) => {
   const Order = require('../models/order-model')
   const Product = require('../models/product-model')
@@ -1153,6 +1209,8 @@ module.exports = {
   getAdminOrders,
   updateOrderStatus,
   getAdminAnalytics,
+  getOrderForInvoice,
+  sendInvoiceToCustomer,
   getBlogs,
   editBlog,
   deleteBlog,

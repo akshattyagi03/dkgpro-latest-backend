@@ -58,6 +58,12 @@ router.put("/edit-blog/:blogId", isAdmin, wrapUpload(upload.single('featuredImag
 router.delete("/delete-blog/:blogId", isAdmin, adminController.removeBlog)
 //get orders
 router.get("/orders", isAdmin, adminController.getOrders)
+//view invoice in browser
+router.get("/orders/:orderId/invoice", isAdmin, adminController.viewInvoice)
+//download invoice as PDF
+router.get("/orders/:orderId/invoice/download", isAdmin, adminController.downloadInvoice)
+//send invoice to customer via email and whatsapp
+router.post("/orders/:orderId/invoice/send", isAdmin, adminController.sendInvoiceToCustomer)
 //update order status
 router.put("/orders/:orderId/status", isAdmin, adminController.updateOrderStatus)
 //get analytics
