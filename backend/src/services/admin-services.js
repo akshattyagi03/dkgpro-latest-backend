@@ -1025,12 +1025,29 @@ const updateOrderStatus = async (orderId, status) => {
 
   // send confirmation email only when transitioning from pending → confirmed
   if (prevOrder.status === 'pending' && status === 'confirmed' && order.user?.email) {
-    const { sendOrderConfirmationEmail } = require('../utils/email-service')
+    const { sendOrderConfirmationEmail, sendOrderNotificationToSuperAdmin } = require('../utils/email-service')
+    const SuperAdmin = require('../models/super-admin-model')
+
+    // email user
     try {
       await sendOrderConfirmationEmail(order.user.email, order)
       console.log('Order confirmation email sent to:', order.user.email)
     } catch (emailErr) {
       console.error('Failed to send order confirmation email:', emailErr.message)
+    }
+
+    // email all super admins
+    try {
+      const superAdmins = await SuperAdmin.find().select('email')
+      await Promise.all(
+        superAdmins.map(sa =>
+          sendOrderNotificationToSuperAdmin(sa.email, order).catch(err =>
+            console.error('Failed to notify super admin:', sa.email, err.message)
+          )
+        )
+      )
+    } catch (err) {
+      console.error('Failed to fetch super admins for notification:', err.message)
     }
   }
 

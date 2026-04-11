@@ -104,28 +104,25 @@ const createOrder = async (userId, orderData) => {
     throw new Error(err.error?.description || err.message || JSON.stringify(err));
   });
 
-  const order = new Order({
-    user: userId,
-    items: orderItems,
-    totalAmount,
-    shippingAddress,
-    razorpayOrderId: razorpayOrder.id,
-    status: 'pending'
-  });
-
-  await order.save();
-
+  // store order data in razorpay notes so verifyPayment can reconstruct it
+  // we do NOT save to DB here — only save after payment is confirmed
   return {
-    orderId: order._id,
     razorpayOrderId: razorpayOrder.id,
     amount: totalAmount,
     currency: 'INR',
-    keyId: process.env.RAZORPAY_KEY_ID
+    keyId: process.env.RAZORPAY_KEY_ID,
+    // pass back to frontend so it can send to verifyPayment
+    _orderMeta: {
+      userId: userId.toString(),
+      items: orderItems,
+      totalAmount,
+      shippingAddress
+    }
   };
 };
 
 const verifyPayment = async (paymentData) => {
-  const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = paymentData;
+  const { razorpayOrderId, razorpayPaymentId, razorpaySignature, orderMeta } = paymentData;
 
   const body = razorpayOrderId + '|' + razorpayPaymentId;
   const expectedSignature = crypto
@@ -137,17 +134,27 @@ const verifyPayment = async (paymentData) => {
     throw new Error('Payment verification failed');
   }
 
-  const order = await Order.findOne({ razorpayOrderId });
-  if (!order) {
-    throw new Error('Order not found');
+  if (!orderMeta) {
+    throw new Error('Order metadata missing');
   }
 
-  order.status = 'pending';
-  order.razorpayPaymentId = razorpayPaymentId;
-  order.razorpaySignature = razorpaySignature;
+  const { userId, items, totalAmount, shippingAddress } = orderMeta;
+
+  // only now save the order to DB after payment is verified
+  const order = new Order({
+    user: userId,
+    items,
+    totalAmount,
+    shippingAddress,
+    razorpayOrderId,
+    razorpayPaymentId,
+    razorpaySignature,
+    status: 'pending'
+  });
+
   await order.save();
 
-  await Cart.findOneAndUpdate({ user: order.user }, { items: [], totalItems: 0 });
+  await Cart.findOneAndUpdate({ user: userId }, { items: [], totalItems: 0 });
 
   return {
     message: 'Payment successful. Order is pending confirmation.',

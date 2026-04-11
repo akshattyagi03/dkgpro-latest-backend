@@ -521,4 +521,68 @@ const sendOrderConfirmationEmail = async (email, order) => {
   await transporter.sendMail(mailOptions)
 }
 
-module.exports = { sendOTP, sendOrderConfirmationEmail }
+const sendOrderNotificationToSuperAdmin = async (superAdminEmail, order) => {
+  const orderNumber = `ORD-${order._id.toString().slice(-6).toUpperCase()}`
+  const { street, city, state, zipCode, country } = order.shippingAddress || {}
+  const addressLine = [street, city, state, zipCode, country].filter(Boolean).join(', ')
+
+  const itemRows = order.items.map(item => `
+    <tr>
+      <td style="padding:8px;border:1px solid #ddd">${item.product?.name || 'Product'}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:center">${item.quantity}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:right">Rs.${item.price.toLocaleString('en-IN')}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:right">Rs.${(item.price * item.quantity).toLocaleString('en-IN')}</td>
+    </tr>
+  `).join('')
+
+  const pdfBuffer = await generateInvoicePDF(order)
+
+  const mailOptions = {
+    from: `DKGPro <${process.env.EMAIL_USER}>`,
+    to: superAdminEmail,
+    subject: `New Confirmed Order - ${orderNumber}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px">
+        <h2 style="color:#667eea">📦 New Order Confirmed</h2>
+        <p>A new order has been confirmed. Please find the invoice attached.</p>
+
+        <table style="width:100%;border-collapse:collapse;margin:10px 0">
+          <tr><td style="padding:6px;color:#666"><strong>Order ID:</strong></td><td style="padding:6px">${orderNumber}</td></tr>
+          <tr><td style="padding:6px;color:#666"><strong>Customer:</strong></td><td style="padding:6px">${order.user?.fullName || 'N/A'}</td></tr>
+          <tr><td style="padding:6px;color:#666"><strong>Email:</strong></td><td style="padding:6px">${order.user?.email || 'N/A'}</td></tr>
+          <tr><td style="padding:6px;color:#666"><strong>Payment ID:</strong></td><td style="padding:6px">${order.razorpayPaymentId || 'N/A'}</td></tr>
+          ${addressLine ? `<tr><td style="padding:6px;color:#666"><strong>Address:</strong></td><td style="padding:6px">${addressLine}</td></tr>` : ''}
+        </table>
+
+        <table style="width:100%;border-collapse:collapse;margin:20px 0">
+          <thead>
+            <tr style="background:#667eea;color:white">
+              <th style="padding:8px;text-align:left">Product</th>
+              <th style="padding:8px;text-align:center">Qty</th>
+              <th style="padding:8px;text-align:right">Price</th>
+              <th style="padding:8px;text-align:right">Total</th>
+            </tr>
+          </thead>
+          <tbody>${itemRows}</tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" style="padding:8px;text-align:right;font-weight:bold">Order Total</td>
+              <td style="padding:8px;text-align:right;font-weight:bold">Rs.${order.totalAmount.toLocaleString('en-IN')}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    `,
+    attachments: [
+      {
+        filename: `Invoice-${orderNumber}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf'
+      }
+    ]
+  }
+
+  await transporter.sendMail(mailOptions)
+}
+
+module.exports = { sendOTP, sendOrderConfirmationEmail, sendOrderNotificationToSuperAdmin }
