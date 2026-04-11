@@ -1008,6 +1008,47 @@ const sendInvoiceToCustomer = async (orderId, adminId) => {
   return { orderNumber, results }
 }
 
+const getAllUsers = async (page = 1, limit = 10) => {
+  const SuperAdmin = require('../models/super-admin-model')
+  const User = require('../models/user-model')
+
+  const pageNum = parseInt(page) || 1
+  const limitNum = Math.min(parseInt(limit) || 10, 50)
+  const skip = (pageNum - 1) * limitNum
+
+  const [superAdmins, superAdminTotal, admins, adminTotal, users, userTotal] = await Promise.all([
+    SuperAdmin.find().select('-password').skip(skip).limit(limitNum).lean(),
+    SuperAdmin.countDocuments(),
+    Admin.find().select('-password').skip(skip).limit(limitNum).lean(),
+    Admin.countDocuments(),
+    User.find().select('-password').skip(skip).limit(limitNum).lean(),
+    User.countDocuments()
+  ])
+
+  const paginate = (total) => ({
+    currentPage: pageNum,
+    totalPages: Math.ceil(total / limitNum),
+    total,
+    hasNext: pageNum < Math.ceil(total / limitNum),
+    hasPrev: pageNum > 1
+  })
+
+  return {
+    superAdmins: {
+      data: superAdmins.map(u => ({ ...u, role: 'superadmin' })),
+      pagination: paginate(superAdminTotal)
+    },
+    admins: {
+      data: admins.map(u => ({ ...u, role: 'admin' })),
+      pagination: paginate(adminTotal)
+    },
+    users: {
+      data: users.map(u => ({ ...u, role: 'user' })),
+      pagination: paginate(userTotal)
+    }
+  }
+}
+
 const getAdminOrders = async (adminId, page = 1, limit = 10) => {
   const Order = require('../models/order-model')
   const Product = require('../models/product-model')
@@ -1211,6 +1252,7 @@ module.exports = {
   getAdminAnalytics,
   getOrderForInvoice,
   sendInvoiceToCustomer,
+  getAllUsers,
   getBlogs,
   editBlog,
   deleteBlog,

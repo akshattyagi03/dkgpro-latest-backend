@@ -56,6 +56,8 @@ router.get("/blogs", isAdmin, adminController.getAdminBlogs)
 router.put("/edit-blog/:blogId", isAdmin, wrapUpload(upload.single('featuredImage')), adminController.updateBlog)
 //delete blogs
 router.delete("/delete-blog/:blogId", isAdmin, adminController.removeBlog)
+//get all users, admins and super admins
+router.get("/all-users", isAdmin, adminController.getAllUsers)
 //get orders
 router.get("/orders", isAdmin, adminController.getOrders)
 //view invoice in browser

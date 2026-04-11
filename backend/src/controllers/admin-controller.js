@@ -28,6 +28,7 @@ const {
   getAdminAnalytics,
   getOrderForInvoice,
   sendInvoiceToCustomer,
+  getAllUsers,
   getBlogs, 
   editBlog, 
   deleteBlog,
@@ -519,6 +520,15 @@ const sendInvoiceToCustomerController = async (req, res) => {
   }
 }
 
+const getAllUsersController = async (req, res) => {
+  try {
+    const result = await getAllUsers(req.query.page, req.query.limit)
+    res.status(200).json(result)
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+}
+
 const updateOrderStatusController = async (req, res) => {
   try {
     const order = await updateOrderStatus(req.params.orderId, req.body.status)
@@ -565,6 +575,7 @@ module.exports = {
   viewInvoice: viewInvoiceController,
   downloadInvoice: downloadInvoiceController,
   sendInvoiceToCustomer: sendInvoiceToCustomerController,
+  getAllUsers: getAllUsersController,
   updateOrderStatus: updateOrderStatusController,
   getAnalytics: getAnalyticsController,
   createNewBlog,
