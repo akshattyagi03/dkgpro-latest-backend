@@ -142,7 +142,7 @@ const verifyPayment = async (paymentData) => {
     throw new Error('Order not found');
   }
 
-  order.status = 'confirmed';
+  order.status = 'pending';
   order.razorpayPaymentId = razorpayPaymentId;
   order.razorpaySignature = razorpaySignature;
   await order.save();
@@ -150,7 +150,7 @@ const verifyPayment = async (paymentData) => {
   await Cart.findOneAndUpdate({ user: order.user }, { items: [], totalItems: 0 });
 
   return {
-    message: 'Payment verified successfully',
+    message: 'Payment successful. Order is pending confirmation.',
     order
   };
 };

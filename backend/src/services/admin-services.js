@@ -707,6 +707,22 @@ const getVenues = async () => {
   return venues
 }
 
+const searchAddons = async (query) => {
+  const Addon = require('../models/addon-model')
+  if (!query || !query.trim()) throw new Error('Search query is required')
+
+  const regex = { $regex: query.trim(), $options: 'i' }
+
+  return Addon.find({
+    $or: [
+      { name: regex },
+      { description: regex },
+      { category: regex },
+      { tags: regex }
+    ]
+  }).select('name description price image category tags')
+}
+
 const addAddon = async (addonData) => {
   const Addon = require('../models/addon-model')
   const { name, description, price, image, category, tags, customFields } = addonData
@@ -938,36 +954,50 @@ const addHeroBanner = async (bannerData, adminId) => {
 
 const getAdminOrders = async (adminId, page = 1, limit = 10) => {
   const Order = require('../models/order-model')
+  const Product = require('../models/product-model')
+
   const pageNum = parseInt(page) || 1
   const limitNum = Math.min(parseInt(limit) || 10, 50)
   const skip = (pageNum - 1) * limitNum
 
-  // get only orders containing products added by this admin
-  const Product = require('../models/product-model')
-  const adminProducts = await Product.find({ addedBy: adminId }).select('_id')
-  const adminProductIds = adminProducts.map(p => p._id)
+  // get only this admin's product IDs
+  const adminProducts = await Product.find({ addedBy: adminId }).select('_id').lean()
+  const adminProductIds = adminProducts.map(p => p._id.toString())
 
-  const query = { 'items.product': { $in: adminProductIds } }
+  // find orders that contain at least one of this admin's products
+  const query = { 'items.product': { $in: adminProducts.map(p => p._id) } }
 
   const orders = await Order.find(query)
     .skip(skip)
     .limit(limitNum)
     .sort({ createdAt: -1 })
-    .populate('user', 'fullName email')
-    .populate('items.product', 'name price')
+    .populate('user', 'fullName email phoneNumber')
+    .populate('items.product', 'name price images')
 
   const total = await Order.countDocuments(query)
 
-  const formatted = orders.map(o => ({
-    id: o._id,
-    orderNumber: `ORD-${o._id.toString().slice(-6).toUpperCase()}`,
-    userName: o.user?.fullName || 'N/A',
-    userEmail: o.user?.email || 'N/A',
-    items: o.items,
-    total: o.totalAmount,
-    status: o.status,
-    updatedAt: o.updatedAt
-  }))
+  // filter each order's items to only include this admin's products
+  const formatted = orders.map(o => {
+    const myItems = o.items.filter(item =>
+      item.product && adminProductIds.includes(item.product._id.toString())
+    )
+    const myTotal = myItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+
+    return {
+      id: o._id,
+      orderNumber: `ORD-${o._id.toString().slice(-6).toUpperCase()}`,
+      userName: o.user?.fullName || 'N/A',
+      userEmail: o.user?.email || 'N/A',
+      userPhone: o.user?.phoneNumber || 'N/A',
+      items: myItems,
+      myTotal,
+      orderTotal: o.totalAmount,
+      status: o.status,
+      shippingAddress: o.shippingAddress,
+      createdAt: o.createdAt,
+      updatedAt: o.updatedAt
+    }
+  })
 
   return {
     orders: formatted,
@@ -985,11 +1015,25 @@ const updateOrderStatus = async (orderId, status) => {
   const Order = require('../models/order-model')
   const validStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']
   if (!validStatuses.includes(status)) throw new Error('Invalid status')
+  const Product = require("../models/product-model")
+  const prevOrder = await Order.findById(orderId)
+  if (!prevOrder) throw new Error('Order not found')
 
   const order = await Order.findByIdAndUpdate(orderId, { status }, { new: true })
     .populate('user', 'fullName email')
     .populate('items.product', 'name price')
-  if (!order) throw new Error('Order not found')
+
+  // send confirmation email only when transitioning from pending → confirmed
+  if (prevOrder.status === 'pending' && status === 'confirmed' && order.user?.email) {
+    const { sendOrderConfirmationEmail } = require('../utils/email-service')
+    try {
+      await sendOrderConfirmationEmail(order.user.email, order)
+      console.log('Order confirmation email sent to:', order.user.email)
+    } catch (emailErr) {
+      console.error('Failed to send order confirmation email:', emailErr.message)
+    }
+  }
+
   return order
 }
 
@@ -1083,6 +1127,7 @@ module.exports = {
   addThirdCategory,
   createCategoryHierarchy,
   addAddon,
+  searchAddons,
   getCustomizationSections,
   toggleProductFeatured,
   toggleProductTier,

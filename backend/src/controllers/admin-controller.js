@@ -16,6 +16,7 @@ const {
   addThirdCategory, 
   createCategoryHierarchy,
   addAddon,
+  searchAddons,
   createCustomizationSection,
   getCustomizationSections,
   toggleProductFeatured,
@@ -68,10 +69,17 @@ const getHome = (req, res) => {
 
 const addProduct = async (req, res) => {
   try {
-    const images = req.files
-      ? req.files.map((f) => multerUpload.getStoredFileUrl(f))
-      : req.body.images || []
-    const product = await addProducts({ ...req.body, images }, req.admin._id)
+    const images = req.files ? req.files.map(f => f.path) : req.body.images || []
+    const body = { ...req.body }
+    const parseField = (key) => { if (typeof body[key] === 'string') { try { body[key] = JSON.parse(body[key]) } catch { body[key] = [] } } }
+    parseField('serviceableAreas')
+    parseField('customizationSections')
+    parseField('additionalCategories')
+    parseField('inclusions')
+    parseField('experiences')
+    parseField('keyHighlights')
+    parseField('tags')
+    const product = await addProducts({ ...body, images }, req.admin._id)
     res.status(201).json({ message: 'Product added successfully', product })
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -313,6 +321,15 @@ const createAddon = async (req, res) => {
   }
 }
 
+const searchAddonsController = async (req, res) => {
+  try {
+    const addons = await searchAddons(req.query.q)
+    res.status(200).json({ addons })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 const sendResetOTP = async (req, res) => {
   try {
     const result = await sendAdminPasswordResetOTP(req.body)
@@ -496,6 +513,7 @@ module.exports = {
   createThirdCategory,
   createCategoryTree,
   createAddon,
+  searchAddons: searchAddonsController,
   getAllCustomizationSections,
   toggleFeatured,
   toggleTier,

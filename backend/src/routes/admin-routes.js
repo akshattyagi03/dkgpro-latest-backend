@@ -42,6 +42,8 @@ router.post("/addthirdcategory", isAdmin, wrapUpload(upload.single('bannerImage'
 router.post("/create-category-tree", isAdmin, adminController.createCategoryTree)
 //create addon for products
 router.post("/add-addon", isAdmin, wrapUpload(upload.single('image')), adminController.createAddon)
+//search addons by text
+router.get("/search-addons", isAdmin, adminController.searchAddons)
 //create venue
 router.post("/add-venue", isAdmin, wrapUpload(upload.array('images', 10)), adminController.createVenue)
 //get venue
