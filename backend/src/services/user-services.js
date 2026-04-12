@@ -278,11 +278,20 @@ const getProducts = async () => {
     .populate('addedBy', 'fullName email')
     .sort({ createdAt: -1 })
 
+  // fetch third category banners under subCategory named 'By Event Type'
+  const byEventTypeSub = await SubCategory.findOne({ name: { $regex: 'by event type', $options: 'i' } })
+  const eventTypeBanners = byEventTypeSub
+    ? await ThirdCategory.find({ subCategory: byEventTypeSub._id })
+        .select('name bannerImage description')
+        .lean()
+    : []
+
   return {
     heroBanners,
     featuredProducts,
     premiumProducts,
-    allProducts
+    allProducts,
+    eventTypeBanners
   }
 }
 

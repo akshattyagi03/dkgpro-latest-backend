@@ -1,10 +1,29 @@
 const multer = require('multer')
 const path = require('path')
 const fs = require('fs')
+const { getWatermarkTransformation, applyWatermarkToSvgUrl } = require('../src/utils/watermark-service')
 
 const uploadRoot = path.join(__dirname, '..', 'public', 'uploads')
 if (!fs.existsSync(uploadRoot)) {
   fs.mkdirSync(uploadRoot, { recursive: true })
+}
+
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/svg+xml'
+]
+
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.svg']
+
+const fileFilter = (req, file, cb) => {
+  if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+    cb(null, true)
+  } else {
+    cb(new Error(`Invalid file type. Allowed types: ${ALLOWED_EXTENSIONS.join(', ')}`), false)
+  }
 }
 
 const diskStorage = multer.diskStorage({
@@ -34,11 +53,16 @@ if (hasCloudinary) {
 
   storage = new CloudinaryStorage({
     cloudinary,
-    params: (req, file) => ({
-      folder: 'dkgpro',
-      allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-      transformation: [{ quality: 'auto', fetch_format: 'auto' }]
-    })
+    params: (req, file) => {
+      const isSvg = file.mimetype === 'image/svg+xml'
+      return {
+        folder: 'dkgpro',
+        resource_type: isSvg ? 'raw' : 'image',
+        format: isSvg ? 'svg' : undefined,
+        allowed_formats: isSvg ? undefined : ['jpg', 'jpeg', 'png', 'webp'],
+        transformation: isSvg ? [] : getWatermarkTransformation()
+      }
+    }
   })
   console.log('[multer] Using Cloudinary storage')
 } else {
@@ -48,7 +72,7 @@ if (hasCloudinary) {
   )
 }
 
-const upload = multer({ storage })
+const upload = multer({ storage, fileFilter })
 
 /**
  * Public URL or path to persist (Cloudinary secure_url vs /uploads/... for disk).
@@ -57,6 +81,10 @@ function getStoredFileUrl(file) {
   if (!file) return undefined
   const p = file.path
   if (p && (p.startsWith('http://') || p.startsWith('https://'))) {
+    // apply watermark URL transformation for SVGs
+    if (file.mimetype === 'image/svg+xml' || (file.originalname && file.originalname.toLowerCase().endsWith('.svg'))) {
+      return applyWatermarkToSvgUrl(p)
+    }
     return p
   }
   if (file.filename) {
