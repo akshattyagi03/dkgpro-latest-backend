@@ -24,6 +24,7 @@ const {
   addVenue,
   getVenues,
   getAdminOrders,
+  getAdminOrderById,
   updateOrderStatus,
   getAdminAnalytics,
   getOrderForInvoice,
@@ -36,6 +37,8 @@ const {
   addAdditionalCategory,
   addHeroBanner
 } = require('../services/admin-services')
+
+const { generateInvoicePDF } = require('../utils/email-service')
 
 const multerUpload = require('../../configuration/multer-config')
 
@@ -72,8 +75,67 @@ const getHome = (req, res) => {
 
 const addProduct = async (req, res) => {
   try {
-    const images = req.files ? req.files.map(f => f.path) : req.body.images || []
+    const fileUrls = req.files ? req.files.map(f => f.path) : []
+
+    let urlPart = []
+    if (req.body.imagesUrls != null && req.body.imagesUrls !== '') {
+      try {
+        urlPart = typeof req.body.imagesUrls === 'string' ? JSON.parse(req.body.imagesUrls) : req.body.imagesUrls
+      } catch {
+        urlPart = []
+      }
+    }
+    if (!Array.isArray(urlPart)) urlPart = []
+
+    let order = []
+    if (req.body.imagesOrder != null && req.body.imagesOrder !== '') {
+      try {
+        order = typeof req.body.imagesOrder === 'string' ? JSON.parse(req.body.imagesOrder) : req.body.imagesOrder
+      } catch {
+        order = []
+      }
+    }
+    if (!Array.isArray(order)) order = []
+
+    let images
+    if (order.length > 0) {
+      images = order
+        .map((tag) => {
+          if (typeof tag !== 'string') return null
+          if (tag.startsWith('f')) {
+            const i = parseInt(tag.slice(1), 10)
+            return Number.isFinite(i) && fileUrls[i] != null ? fileUrls[i] : null
+          }
+          if (tag.startsWith('u')) {
+            const i = parseInt(tag.slice(1), 10)
+            return Number.isFinite(i) && urlPart[i] != null ? urlPart[i] : null
+          }
+          return null
+        })
+        .filter(Boolean)
+    } else if (fileUrls.length) {
+      images = [...fileUrls, ...urlPart]
+    } else if (req.body.images != null) {
+      if (typeof req.body.images === 'string') {
+        try {
+          images = JSON.parse(req.body.images)
+        } catch {
+          images = []
+        }
+      } else if (Array.isArray(req.body.images)) {
+        images = req.body.images
+      } else {
+        images = []
+      }
+    } else {
+      images = []
+    }
+
     const body = { ...req.body }
+    delete body.imagesUrls
+    delete body.imagesOrder
+    delete body.images
+
     const parseField = (key) => { if (typeof body[key] === 'string') { try { body[key] = JSON.parse(body[key]) } catch { body[key] = [] } } }
     parseField('serviceableAreas')
     parseField('customizationSections')
@@ -82,6 +144,10 @@ const addProduct = async (req, res) => {
     parseField('experiences')
     parseField('keyHighlights')
     parseField('tags')
+
+    if (body.price != null && body.price !== '') body.price = Number(body.price)
+    if (body.discountedPrice != null && body.discountedPrice !== '') body.discountedPrice = Number(body.discountedPrice)
+
     const product = await addProducts({ ...body, images }, req.admin._id)
     res.status(201).json({ message: 'Product added successfully', product })
   } catch (error) {
@@ -477,6 +543,35 @@ const getOrdersController = async (req, res) => {
   }
 }
 
+const getOrderByIdController = async (req, res) => {
+  try {
+    const order = await getAdminOrderById(req.admin._id, req.params.orderId)
+    res.status(200).json({ order })
+  } catch (error) {
+    const msg = error.message || 'Failed to load order'
+    const code = msg === 'Order not found' ? 404 : 400
+    res.status(code).json({ message: msg })
+  }
+}
+
+const getAllUsersController = async (req, res) => {
+  try {
+    const result = await getAllUsers(req.query.page, req.query.limit)
+    res.status(200).json(result)
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+}
+
+const updateOrderStatusController = async (req, res) => {
+  try {
+    const order = await updateOrderStatus(req.params.orderId, req.body.status)
+    res.status(200).json({ message: 'Order status updated', order })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 const viewInvoiceController = async (req, res) => {
   try {
     const { generateInvoicePDF } = require('../utils/email-service')
@@ -507,40 +602,54 @@ const downloadInvoiceController = async (req, res) => {
   }
 }
 
-const sendInvoiceToCustomerController = async (req, res) => {
-  try {
-    const result = await sendInvoiceToCustomer(req.params.orderId, req.admin._id)
-    res.status(200).json({ message: 'Invoice sent to customer', ...result })
-  } catch (error) {
-    const status = error.message.startsWith('Unauthorized') ? 403 : 400
-    res.status(status).json({ message: error.message })
-  }
-}
-
-const getAllUsersController = async (req, res) => {
-  try {
-    const result = await getAllUsers(req.query.page, req.query.limit)
-    res.status(200).json(result)
-  } catch (error) {
-    res.status(500).json({ message: error.message })
-  }
-}
-
-const updateOrderStatusController = async (req, res) => {
-  try {
-    const order = await updateOrderStatus(req.params.orderId, req.body.status)
-    res.status(200).json({ message: 'Order status updated', order })
-  } catch (error) {
-    res.status(400).json({ message: error.message })
-  }
-}
-
 const getAnalyticsController = async (req, res) => {
   try {
     const analytics = await getAdminAnalytics(req.admin._id)
     res.status(200).json(analytics)
   } catch (error) {
     res.status(500).json({ message: error.message })
+  }
+}
+
+const invoiceErrorResponse = (res, error) => {
+  const msg = error.message || 'Failed to process invoice'
+  if (msg === 'Order not found') return res.status(404).json({ message: msg })
+  if (msg.startsWith('Unauthorized')) return res.status(403).json({ message: msg })
+  return res.status(400).json({ message: msg })
+}
+
+const viewInvoice = async (req, res) => {
+  try {
+    const order = await getOrderForInvoice(req.params.orderId, req.admin._id)
+    const pdfBuffer = await generateInvoicePDF(order)
+    const suffix = order._id.toString().slice(-6).toUpperCase()
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `inline; filename="Invoice-ORD-${suffix}.pdf"`)
+    res.send(pdfBuffer)
+  } catch (error) {
+    invoiceErrorResponse(res, error)
+  }
+}
+
+const downloadInvoice = async (req, res) => {
+  try {
+    const order = await getOrderForInvoice(req.params.orderId, req.admin._id)
+    const pdfBuffer = await generateInvoicePDF(order)
+    const suffix = order._id.toString().slice(-6).toUpperCase()
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename="Invoice-ORD-${suffix}.pdf"`)
+    res.send(pdfBuffer)
+  } catch (error) {
+    invoiceErrorResponse(res, error)
+  }
+}
+
+const sendInvoiceToCustomerController = async (req, res) => {
+  try {
+    const result = await sendInvoiceToCustomer(req.params.orderId, req.admin._id)
+    res.status(200).json(result)
+  } catch (error) {
+    invoiceErrorResponse(res, error)
   }
 }
 
@@ -573,8 +682,12 @@ module.exports = {
   downloadInvoice: downloadInvoiceController,
   sendInvoiceToCustomer: sendInvoiceToCustomerController,
   getAllUsers: getAllUsersController,
+  getOrderById: getOrderByIdController,
   updateOrderStatus: updateOrderStatusController,
   getAnalytics: getAnalyticsController,
+  viewInvoice,
+  downloadInvoice,
+  sendInvoiceToCustomer: sendInvoiceToCustomerController,
   createNewBlog,
   getAdminBlogs,
   updateBlog,

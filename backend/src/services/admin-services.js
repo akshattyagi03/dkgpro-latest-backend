@@ -1,6 +1,7 @@
 const Admin = require('../models/admin-model')
 const RefreshToken = require('../models/refresh-token-model')
 const OTP = require('../models/otp-model')
+const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const { generateOTP } = require('../utils/otp-generator')
 const { sendOTP } = require('../utils/email-service')
@@ -725,7 +726,29 @@ const searchAddons = async (query) => {
 
 const addAddon = async (addonData) => {
   const Addon = require('../models/addon-model')
-  const { name, description, price, image, category, tags, customFields } = addonData
+  const { name, description, image, category } = addonData
+  let { price, tags, customFields } = addonData
+  price = typeof price === 'string' ? Number(price) : price
+  if (!Number.isFinite(price) || price < 0) {
+    throw new Error('Valid price is required')
+  }
+  if (typeof tags === 'string') {
+    try {
+      tags = JSON.parse(tags)
+    } catch {
+      tags = tags.split(',').map((t) => t.trim()).filter(Boolean)
+    }
+  }
+  if (typeof customFields === 'string') {
+    try {
+      customFields = JSON.parse(customFields)
+    } catch {
+      customFields = []
+    }
+  }
+  if (!Array.isArray(customFields)) {
+    customFields = []
+  }
 
   // Validate and sanitize customFields
   const validTypes = ['text', 'textarea', 'number', 'dropdown', 'file']
@@ -1118,6 +1141,43 @@ const getAdminOrders = async (adminId, page = 1, limit = 10) => {
   }
 }
 
+/** Single order for admin — same shape as list entries; throws if order missing or none of this admin's products */
+const getAdminOrderById = async (adminId, orderId) => {
+  const Order = require('../models/order-model')
+  const Product = require('../models/product-model')
+
+  const adminProducts = await Product.find({ addedBy: adminId }).select('_id').lean()
+  const adminProductIds = adminProducts.map(p => p._id.toString())
+
+  const o = await Order.findById(orderId)
+    .populate('user', 'fullName email phoneNumber')
+    .populate('items.product', 'name price images')
+
+  if (!o) throw new Error('Order not found')
+
+  const myItems = o.items.filter(item =>
+    item.product && adminProductIds.includes(item.product._id.toString())
+  )
+  if (myItems.length === 0) throw new Error('Order not found')
+
+  const myTotal = myItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+
+  return {
+    id: o._id,
+    orderNumber: `ORD-${o._id.toString().slice(-6).toUpperCase()}`,
+    userName: o.user?.fullName || 'N/A',
+    userEmail: o.user?.email || 'N/A',
+    userPhone: o.user?.phoneNumber || 'N/A',
+    items: myItems,
+    myTotal,
+    orderTotal: o.totalAmount,
+    status: o.status,
+    shippingAddress: o.shippingAddress,
+    createdAt: o.createdAt,
+    updatedAt: o.updatedAt
+  }
+}
+
 const updateOrderStatus = async (orderId, status) => {
   const Order = require('../models/order-model')
   const validStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']
@@ -1258,6 +1318,7 @@ module.exports = {
   addVenue,
   getVenues,
   getAdminOrders,
+  getAdminOrderById,
   updateOrderStatus,
   getAdminAnalytics,
   getOrderForInvoice,

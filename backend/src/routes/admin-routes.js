@@ -66,6 +66,8 @@ router.get("/orders/:orderId/invoice", isAdmin, adminController.viewInvoice)
 router.get("/orders/:orderId/invoice/download", isAdmin, adminController.downloadInvoice)
 //send invoice to customer via email and whatsapp
 router.post("/orders/:orderId/invoice/send", isAdmin, adminController.sendInvoiceToCustomer)
+//get single order (admin must sell at least one product in the order)
+router.get("/orders/:orderId", isAdmin, adminController.getOrderById)
 //update order status
 router.put("/orders/:orderId/status", isAdmin, adminController.updateOrderStatus)
 //get analytics
