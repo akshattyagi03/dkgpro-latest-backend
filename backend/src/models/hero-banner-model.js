@@ -8,7 +8,12 @@ const heroBannerSchema = new mongoose.Schema({
   subCategory: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'SubCategory',
-    required: [true, 'Sub category is required']
+    default: null
+  },
+  thirdCategory: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ThirdCategory',
+    default: null
   },
   addedBy: {
     type: mongoose.Schema.Types.ObjectId,

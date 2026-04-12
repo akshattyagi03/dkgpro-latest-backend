@@ -274,6 +274,7 @@ const getProducts = async () => {
 
   const heroBanners = await HeroBanner.find({ isActive: true })
     .populate('subCategory')
+    .populate('thirdCategory')
     .populate('addedBy', 'fullName email')
     .sort({ createdAt: -1 })
 

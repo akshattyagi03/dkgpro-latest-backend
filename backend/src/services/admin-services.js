@@ -936,20 +936,30 @@ const verifyAdminPhoneLogin = async (userData, res) => {
 const addHeroBanner = async (bannerData, adminId) => {
   const HeroBanner = require('../models/hero-banner-model')
   const SubCategory = require('../models/sub-category-model')
+  const ThirdCategory = require('../models/third-category-model')
 
-  const { image, subCategory } = bannerData
+  const { image, subCategory, thirdCategory } = bannerData
 
-  const subCat = await SubCategory.findOne({ name: subCategory })
-  if (!subCat) throw new Error(`Sub category '${subCategory}' not found`)
+  if (!subCategory && !thirdCategory) throw new Error('Provide either subCategory or thirdCategory')
+  if (subCategory && thirdCategory) throw new Error('Provide only one of subCategory or thirdCategory')
 
-  const banner = new HeroBanner({
-    image,
-    subCategory: subCat._id,
-    addedBy: adminId
-  })
+  const bannerPayload = { image, addedBy: adminId }
 
+  if (subCategory) {
+    const subCat = await SubCategory.findOne({ name: subCategory })
+    if (!subCat) throw new Error(`Sub category '${subCategory}' not found`)
+    bannerPayload.subCategory = subCat._id
+  }
+
+  if (thirdCategory) {
+    const thirdCat = await ThirdCategory.findOne({ name: thirdCategory })
+    if (!thirdCat) throw new Error(`Third category '${thirdCategory}' not found`)
+    bannerPayload.thirdCategory = thirdCat._id
+  }
+
+  const banner = new HeroBanner(bannerPayload)
   await banner.save()
-  return banner.populate('subCategory')
+  return banner.populate(['subCategory', 'thirdCategory'])
 }
 
 const getOrderForInvoice = async (orderId, adminId) => {
