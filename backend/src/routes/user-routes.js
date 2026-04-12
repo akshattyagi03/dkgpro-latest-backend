@@ -27,6 +27,8 @@ router.get('/featured', userController.featuredProducts)
 router.get('/premium', userController.premiumProducts)
 //category wise products
 router.get('/category/:categoryName', userController.getProductsByCategory)
+//sub category page with hero banner and third categories
+router.get('/subcategory/:subCategory', userController.getSubCategoryPage)
 //filtered products with query parameters
 router.get('/filter', userController.getFilteredProducts)
 //product details by ID

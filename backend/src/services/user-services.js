@@ -552,10 +552,7 @@ const getProductsByThirdCategory = async (categoryName, page = 1, limit = 10) =>
   const limitNum = Math.min(parseInt(limit) || 10, 50)
   const skip = (pageNum - 1) * limitNum
 
-  const products = await Product.find({ thirdCategory: thirdCategory._id })
-    .skip(skip)
-    .limit(limitNum)
-    .sort({ isFeatured: -1, createdAt: -1 })
+  const populate = (q) => q
     .populate('mainCategory')
     .populate('subCategory')
     .populate('thirdCategory')
@@ -563,9 +560,19 @@ const getProductsByThirdCategory = async (categoryName, page = 1, limit = 10) =>
     .populate({ path: 'customizationSections.addons.addon' })
     .populate('addedBy')
 
-  const total = await Product.countDocuments({ thirdCategory: thirdCategory._id })
+  const baseQuery = { thirdCategory: thirdCategory._id }
 
-  // fetch additional categories tree rooted at this thirdCategory
+  const [featuredAndPremium, featuredOnly, premiumOnly, standard] = await Promise.all([
+    populate(Product.find({ ...baseQuery, isFeatured: true, tier: 'premium' }).sort({ createdAt: -1 })),
+    populate(Product.find({ ...baseQuery, isFeatured: true, tier: 'standard' }).sort({ createdAt: -1 })),
+    populate(Product.find({ ...baseQuery, isFeatured: false, tier: 'premium' }).sort({ createdAt: -1 })),
+    populate(Product.find({ ...baseQuery, isFeatured: false, tier: 'standard' }).sort({ createdAt: -1 }))
+  ])
+
+  const allProducts = [...featuredAndPremium, ...featuredOnly, ...premiumOnly, ...standard]
+  const total = allProducts.length
+  const products = allProducts.slice(skip, skip + limitNum)
+
   const buildAdditionalTree = async (parentId, parentModel) => {
     const children = await AdditionalCategory.find({ parentCategory: parentId, parentModel }).lean()
     return Promise.all(
@@ -1216,5 +1223,53 @@ const deleteVenueReview = async (userId, reviewId) => {
   await VenueReview.findByIdAndDelete(reviewId)
 }
 
-module.exports = {getProfileService, sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, syncCheckoutCart, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, getVenuesForUsers, getVenueDetails, createReview, createVenueReview, editReview, deleteReview, editVenueReview, deleteVenueReview, getSimilarProducts, getPublishedBlogs, getBlogBySlug }
+const getSubCategoryPage = async (subCategoryName) => {
+  const MainCategory = require('../models/main-category-model')
+  const SubCategory = require('../models/sub-category-model')
+  const ThirdCategory = require('../models/third-category-model')
+  const HeroBanner = require('../models/hero-banner-model')
+  const Product = require('../models/product-model')
+  const AdditionalCategory = require('../models/additional-category-model')
+  const AddOn = require('../models/addon-model')
+  const subCat = await SubCategory.findOne({ name: subCategoryName })
+  if (!subCat) throw new Error(`Sub category '${subCategoryName}' not found`)
+
+  const heroBanner = await HeroBanner.findOne({ subCategory: subCat._id, isActive: true })
+    .sort({ createdAt: -1 })
+    .select('image')
+
+  const thirdCategories = await ThirdCategory.find({ subCategory: subCat._id })
+    .select('name description bannerImage')
+    .lean()
+
+  const thirdCategoryIds = thirdCategories.map(t => t._id)
+
+  const populate = (q) => q
+    .populate('mainCategory')
+    .populate('subCategory')
+    .populate('thirdCategory')
+    .populate('additionalCategories')
+    .populate({ path: 'customizationSections.addons.addon' })
+    .populate('addedBy')
+
+  const baseQuery = { thirdCategory: { $in: thirdCategoryIds } }
+
+  const [featuredAndPremium, featuredOnly, premiumOnly, standard] = await Promise.all([
+    populate(Product.find({ ...baseQuery, isFeatured: true, tier: 'premium' }).sort({ createdAt: -1 })),
+    populate(Product.find({ ...baseQuery, isFeatured: true, tier: 'standard' }).sort({ createdAt: -1 })),
+    populate(Product.find({ ...baseQuery, isFeatured: false, tier: 'premium' }).sort({ createdAt: -1 })),
+    populate(Product.find({ ...baseQuery, isFeatured: false, tier: 'standard' }).sort({ createdAt: -1 }))
+  ])
+
+  const products = [...featuredAndPremium, ...featuredOnly, ...premiumOnly, ...standard]
+
+  return {
+    subCategory: { _id: subCat._id, name: subCat.name, description: subCat.description, bannerImage: subCat.bannerImage },
+    heroBanner: heroBanner ? heroBanner.image : null,
+    thirdCategories,
+    products
+  }
+}
+
+module.exports = {getProfileService, sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, syncCheckoutCart, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, getVenuesForUsers, getVenueDetails, createReview, createVenueReview, editReview, deleteReview, editVenueReview, deleteVenueReview, getSimilarProducts, getPublishedBlogs, getBlogBySlug, getSubCategoryPage }
 

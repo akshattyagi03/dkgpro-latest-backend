@@ -36,6 +36,7 @@ const {
   editVenueReview,
   deleteVenueReview,
   getProfileService,
+  getSubCategoryPage,
   getSimilarProducts,
   getPublishedBlogs,
   getBlogBySlug
@@ -484,6 +485,15 @@ const deleteVenueReviewController = async (req, res) => {
   }
 }
 
+const getSubCategoryPageController = async (req, res) => {
+  try {
+    const result = await getSubCategoryPage(req.params.subCategory)
+    res.status(HTTP_STATUS.OK).json(result)
+  } catch (error) {
+    res.status(HTTP_STATUS.NOT_FOUND).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -522,6 +532,7 @@ module.exports = {
   deleteVenueReview: deleteVenueReviewController,
   getProfile,
   getSimilarProducts: getSimilarProductsController,
+  getSubCategoryPage: getSubCategoryPageController,
   getPublishedBlogs: getPublishedBlogsController,
   getBlogBySlug: getBlogBySlugController
 }
