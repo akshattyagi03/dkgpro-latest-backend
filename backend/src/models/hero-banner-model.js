@@ -23,6 +23,16 @@ const heroBannerSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  /** Where this banner appears on the guest home page (admin upload). */
+  placement: {
+    type: String,
+    enum: ['hero', 'festival', 'kids', 'occasion'],
+    default: 'hero'
+  },
+  sortOrder: {
+    type: Number,
+    default: 0
   }
 }, { timestamps: true })
 

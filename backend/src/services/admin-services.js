@@ -961,12 +961,21 @@ const addHeroBanner = async (bannerData, adminId) => {
   const SubCategory = require('../models/sub-category-model')
   const ThirdCategory = require('../models/third-category-model')
 
-  const { image, subCategory, thirdCategory } = bannerData
+  const { image, subCategory, thirdCategory, placement, sortOrder } = bannerData
 
   if (!subCategory && !thirdCategory) throw new Error('Provide either subCategory or thirdCategory')
   if (subCategory && thirdCategory) throw new Error('Provide only one of subCategory or thirdCategory')
 
-  const bannerPayload = { image, addedBy: adminId }
+  const allowedPlacements = ['hero', 'festival', 'kids', 'occasion']
+  const placementVal =
+    placement && allowedPlacements.includes(String(placement)) ? String(placement) : 'hero'
+  const sortVal =
+    sortOrder !== undefined && sortOrder !== null && String(sortOrder).trim() !== ''
+      ? parseInt(String(sortOrder), 10)
+      : 0
+  const sortOrderSafe = Number.isFinite(sortVal) ? sortVal : 0
+
+  const bannerPayload = { image, addedBy: adminId, placement: placementVal, sortOrder: sortOrderSafe }
 
   if (subCategory) {
     const subCat = await SubCategory.findOne({ name: subCategory })
@@ -982,7 +991,10 @@ const addHeroBanner = async (bannerData, adminId) => {
 
   const banner = new HeroBanner(bannerPayload)
   await banner.save()
-  return banner.populate(['subCategory', 'thirdCategory'])
+  return banner.populate([
+    { path: 'subCategory', populate: { path: 'mainCategory', select: 'name' } },
+    { path: 'thirdCategory', populate: { path: 'subCategory', populate: { path: 'mainCategory', select: 'name' } } }
+  ])
 }
 
 const getOrderForInvoice = async (orderId, adminId) => {

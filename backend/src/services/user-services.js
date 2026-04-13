@@ -273,10 +273,19 @@ const getProducts = async () => {
     .populate('addedBy')
 
   const heroBanners = await HeroBanner.find({ isActive: true })
-    .populate('subCategory')
-    .populate('thirdCategory')
+    .populate({
+      path: 'subCategory',
+      populate: { path: 'mainCategory', select: 'name' }
+    })
+    .populate({
+      path: 'thirdCategory',
+      populate: {
+        path: 'subCategory',
+        populate: { path: 'mainCategory', select: 'name' }
+      }
+    })
     .populate('addedBy', 'fullName email')
-    .sort({ createdAt: -1 })
+    .sort({ sortOrder: 1, createdAt: -1 })
 
   // fetch third category banners under subCategory named 'By Event Type'
   const byEventTypeSub = await SubCategory.findOne({ name: { $regex: 'by event type', $options: 'i' } })
