@@ -52,6 +52,10 @@ router.put("/edit-venue/:venueId", isSuperAdmin, wrapUpload(upload.array('images
 router.delete("/delete-venue/:venueId", isSuperAdmin, superAdminController.deleteVenue)
 //get all inquiries
 router.get("/inquiries", isSuperAdmin, superAdminController.getInquiries)
+//blog management
+router.get("/blogs", isSuperAdmin, superAdminController.getBlogs)
+router.put("/blogs/:blogId", isSuperAdmin, wrapUpload(upload.single('featuredImage')), superAdminController.editBlog)
+router.delete("/blogs/:blogId", isSuperAdmin, superAdminController.deleteBlog)
 //logout super admin
 router.get("/logout", isSuperAdmin, superAdminController.logout)
 //get category tree

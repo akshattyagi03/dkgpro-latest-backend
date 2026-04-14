@@ -18,6 +18,9 @@ const {
   removeVenue,
   getAllAdmins,
   getAllInquiries,
+  getAllBlogs,
+  updateBlog,
+  removeBlog,
   logoutSuperAdmin
 } = require('../services/super-admin-services')
 
@@ -245,6 +248,36 @@ const getInquiries = async (req, res) => {
   }
 }
 
+const getBlogs = async (req, res) => {
+  try {
+    const { page, limit, published, category, title } = req.query
+    const result = await getAllBlogs(page, limit, { published, category, title })
+    res.status(200).json(result)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const editBlog = async (req, res) => {
+  try {
+    const featuredImage = req.file ? multerUpload.getStoredFileUrl(req.file) : undefined
+    const updateData = featuredImage ? { ...req.body, featuredImage } : req.body
+    const blog = await updateBlog(req.params.blogId, updateData)
+    res.status(200).json({ message: 'Blog updated successfully', blog })
+  } catch (error) {
+    res.status(error.message === 'Blog not found' ? 404 : 400).json({ message: error.message })
+  }
+}
+
+const deleteBlog = async (req, res) => {
+  try {
+    await removeBlog(req.params.blogId)
+    res.status(200).json({ message: 'Blog deleted successfully' })
+  } catch (error) {
+    res.status(error.message === 'Blog not found' ? 404 : 400).json({ message: error.message })
+  }
+}
+
 // ── Category Management ──
 
 const getCategoryTreeView = async (req, res) => {
@@ -390,6 +423,9 @@ module.exports = {
   getAdmins,
   getInquiries,
   logout,
+  getBlogs,
+  editBlog,
+  deleteBlog,
   getCategoryTree: getCategoryTreeView,
   updateMainCategory,
   deleteMainCategory,

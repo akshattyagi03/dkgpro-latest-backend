@@ -552,6 +552,90 @@ const getAllInquiries = async () => {
   return await Inquiry.find().populate('venue').sort({ createdAt: -1 })
 }
 
+const getAllBlogs = async (page = 1, limit = 10, filters = {}) => {
+  const Blog = require('../models/blog-model')
+  const pageNum = parseInt(page) || 1
+  const limitNum = Math.min(parseInt(limit) || 10, 50)
+  const skip = (pageNum - 1) * limitNum
+
+  const query = {}
+  if (filters.published !== undefined && filters.published !== '') {
+    query.published = filters.published === 'true' || filters.published === true
+  }
+  if (filters.category) query.category = { $regex: filters.category.trim(), $options: 'i' }
+  if (filters.title) query.title = { $regex: filters.title.trim(), $options: 'i' }
+
+  const [blogs, total] = await Promise.all([
+    Blog.find(query)
+      .populate('author', 'fullName email')
+      .select('-content')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum),
+    Blog.countDocuments(query)
+  ])
+
+  return {
+    blogs,
+    pagination: {
+      currentPage: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+      totalBlogs: total,
+      hasNext: pageNum < Math.ceil(total / limitNum),
+      hasPrev: pageNum > 1
+    }
+  }
+}
+
+const updateBlog = async (blogId, updateData) => {
+  const Blog = require('../models/blog-model')
+
+  const blog = await Blog.findById(blogId)
+  if (!blog) throw new Error('Blog not found')
+
+  const allowed = ['title', 'excerpt', 'content', 'featuredImage', 'category', 'tags', 'published', 'metaTitle', 'metaDescription']
+  const update = {}
+  for (const key of allowed) {
+    if (updateData[key] !== undefined) update[key] = updateData[key]
+  }
+
+  // normalize tags
+  if (update.tags && typeof update.tags === 'string') {
+    try { update.tags = JSON.parse(update.tags) } catch { update.tags = update.tags.split(',').map(t => t.trim()).filter(Boolean) }
+  }
+
+  // normalize published
+  if (update.published !== undefined) {
+    update.published = update.published === true || update.published === 'true'
+  }
+
+  // recalculate reading time if content changed
+  if (update.content) {
+    update.readingTime = Math.ceil(update.content.trim().split(/\s+/).length / 200)
+  }
+
+  // set publishedAt if publishing for first time
+  if (update.published && !blog.publishedAt) {
+    update.publishedAt = new Date()
+  }
+
+  // regenerate slug if title changed
+  if (update.title && update.title !== blog.title) {
+    const baseSlug = update.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    const existing = await Blog.findOne({ slug: { $regex: `^${baseSlug}` }, _id: { $ne: blogId } })
+    update.slug = existing ? `${baseSlug}-${Date.now()}` : baseSlug
+  }
+
+  return Blog.findByIdAndUpdate(blogId, update, { new: true, runValidators: false }).populate('author', 'fullName email')
+}
+
+const removeBlog = async (blogId) => {
+  const Blog = require('../models/blog-model')
+  const blog = await Blog.findByIdAndDelete(blogId)
+  if (!blog) throw new Error('Blog not found')
+  return blog
+}
+
 module.exports = { 
   sendSuperAdminOTP, 
   verifySuperAdminOTP, 
@@ -572,6 +656,9 @@ module.exports = {
   removeVenue,
   getAllAdmins,
   getAllInquiries,
+  getAllBlogs,
+  updateBlog,
+  removeBlog,
   refreshSuperAdminAccessToken,
   logoutSuperAdmin
 }
