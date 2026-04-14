@@ -20,6 +20,14 @@ const {
   logoutSuperAdmin
 } = require('../services/super-admin-services')
 
+const {
+  getCategoryTree,
+  addMainCategory,
+  addSubCategory,
+  addThirdCategory,
+  addAdditionalCategory
+} = require('../services/admin-services')
+
 const multerUpload = require('../../configuration/multer-config')
 
 const sendOTP = async (req, res) => {
@@ -213,6 +221,130 @@ const getInquiries = async (req, res) => {
   }
 }
 
+// ── Category Management ──
+
+const getCategoryTreeView = async (req, res) => {
+  try {
+    const categoryTree = await getCategoryTree()
+    res.status(200).json({ categoryTree })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const updateMainCategory = async (req, res) => {
+  try {
+    const MainCategory = require('../models/main-category-model')
+    const { name } = req.body
+    if (!name || !name.trim()) return res.status(400).json({ message: 'Name is required' })
+    const category = await MainCategory.findByIdAndUpdate(
+      req.params.id,
+      { name: name.trim() },
+      { new: true }
+    )
+    if (!category) return res.status(404).json({ message: 'Main category not found' })
+    res.status(200).json({ message: 'Main category updated', category })
+  } catch (error) {
+    if (error.code === 11000) return res.status(400).json({ message: 'A category with this name already exists' })
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const deleteMainCategory = async (req, res) => {
+  try {
+    const MainCategory = require('../models/main-category-model')
+    const category = await MainCategory.findByIdAndDelete(req.params.id)
+    if (!category) return res.status(404).json({ message: 'Main category not found' })
+    res.status(200).json({ message: 'Main category deleted' })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const updateSubCategory = async (req, res) => {
+  try {
+    const SubCategory = require('../models/sub-category-model')
+    const bannerImage = req.file ? multerUpload.getStoredFileUrl(req.file) : undefined
+    const updateData = { ...req.body }
+    if (bannerImage) updateData.bannerImage = bannerImage
+    const category = await SubCategory.findByIdAndUpdate(
+      req.params.id, updateData, { new: true }
+    )
+    if (!category) return res.status(404).json({ message: 'Sub category not found' })
+    res.status(200).json({ message: 'Sub category updated', category })
+  } catch (error) {
+    if (error.code === 11000) return res.status(400).json({ message: 'A category with this name already exists' })
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const deleteSubCategory = async (req, res) => {
+  try {
+    const SubCategory = require('../models/sub-category-model')
+    const category = await SubCategory.findByIdAndDelete(req.params.id)
+    if (!category) return res.status(404).json({ message: 'Sub category not found' })
+    res.status(200).json({ message: 'Sub category deleted' })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const updateThirdCategory = async (req, res) => {
+  try {
+    const ThirdCategory = require('../models/third-category-model')
+    const bannerImage = req.file ? multerUpload.getStoredFileUrl(req.file) : undefined
+    const updateData = { ...req.body }
+    if (bannerImage) updateData.bannerImage = bannerImage
+    const category = await ThirdCategory.findByIdAndUpdate(
+      req.params.id, updateData, { new: true }
+    )
+    if (!category) return res.status(404).json({ message: 'Third category not found' })
+    res.status(200).json({ message: 'Third category updated', category })
+  } catch (error) {
+    if (error.code === 11000) return res.status(400).json({ message: 'A category with this name already exists' })
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const deleteThirdCategory = async (req, res) => {
+  try {
+    const ThirdCategory = require('../models/third-category-model')
+    const category = await ThirdCategory.findByIdAndDelete(req.params.id)
+    if (!category) return res.status(404).json({ message: 'Third category not found' })
+    res.status(200).json({ message: 'Third category deleted' })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const updateAdditionalCategory = async (req, res) => {
+  try {
+    const AdditionalCategory = require('../models/additional-category-model')
+    const bannerImage = req.file ? multerUpload.getStoredFileUrl(req.file) : undefined
+    const updateData = { ...req.body }
+    if (bannerImage) updateData.bannerImage = bannerImage
+    const category = await AdditionalCategory.findByIdAndUpdate(
+      req.params.id, updateData, { new: true }
+    )
+    if (!category) return res.status(404).json({ message: 'Additional category not found' })
+    res.status(200).json({ message: 'Additional category updated', category })
+  } catch (error) {
+    if (error.code === 11000) return res.status(400).json({ message: 'A category with this name already exists' })
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const deleteAdditionalCategory = async (req, res) => {
+  try {
+    const AdditionalCategory = require('../models/additional-category-model')
+    const category = await AdditionalCategory.findByIdAndDelete(req.params.id)
+    if (!category) return res.status(404).json({ message: 'Additional category not found' })
+    res.status(200).json({ message: 'Additional category deleted' })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -232,5 +364,14 @@ module.exports = {
   deleteVenue,
   getAdmins,
   getInquiries,
-  logout
+  logout,
+  getCategoryTree: getCategoryTreeView,
+  updateMainCategory,
+  deleteMainCategory,
+  updateSubCategory,
+  deleteSubCategory,
+  updateThirdCategory,
+  deleteThirdCategory,
+  updateAdditionalCategory,
+  deleteAdditionalCategory
 }

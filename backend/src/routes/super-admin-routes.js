@@ -52,5 +52,19 @@ router.delete("/delete-venue/:venueId", isSuperAdmin, superAdminController.delet
 router.get("/inquiries", isSuperAdmin, superAdminController.getInquiries)
 //logout super admin
 router.get("/logout", isSuperAdmin, superAdminController.logout)
+//get category tree
+router.get("/category-tree", isSuperAdmin, superAdminController.getCategoryTree)
+//main category
+router.put("/main-category/:id", isSuperAdmin, superAdminController.updateMainCategory)
+router.delete("/main-category/:id", isSuperAdmin, superAdminController.deleteMainCategory)
+//sub category
+router.put("/sub-category/:id", isSuperAdmin, wrapUpload(upload.single('bannerImage')), superAdminController.updateSubCategory)
+router.delete("/sub-category/:id", isSuperAdmin, superAdminController.deleteSubCategory)
+//third category
+router.put("/third-category/:id", isSuperAdmin, wrapUpload(upload.single('bannerImage')), superAdminController.updateThirdCategory)
+router.delete("/third-category/:id", isSuperAdmin, superAdminController.deleteThirdCategory)
+//additional category
+router.put("/additional-category/:id", isSuperAdmin, wrapUpload(upload.single('bannerImage')), superAdminController.updateAdditionalCategory)
+router.delete("/additional-category/:id", isSuperAdmin, superAdminController.deleteAdditionalCategory)
 
 module.exports = router
