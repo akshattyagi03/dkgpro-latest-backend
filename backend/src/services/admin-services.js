@@ -961,12 +961,12 @@ const addHeroBanner = async (bannerData, adminId) => {
   const SubCategory = require('../models/sub-category-model')
   const ThirdCategory = require('../models/third-category-model')
 
-  const { image, subCategory, thirdCategory, placement, sortOrder } = bannerData
+  const { image, subCategory, thirdCategory, placement, sortOrder, title } = bannerData
 
   if (!subCategory && !thirdCategory) throw new Error('Provide either subCategory or thirdCategory')
   if (subCategory && thirdCategory) throw new Error('Provide only one of subCategory or thirdCategory')
 
-  const allowedPlacements = ['hero', 'festival', 'kids', 'occasion']
+  const allowedPlacements = ['hero', 'festival', 'festival_hub', 'wedding', 'kids', 'occasion']
   const placementVal =
     placement && allowedPlacements.includes(String(placement)) ? String(placement) : 'hero'
   const sortVal =
@@ -975,7 +975,13 @@ const addHeroBanner = async (bannerData, adminId) => {
       : 0
   const sortOrderSafe = Number.isFinite(sortVal) ? sortVal : 0
 
-  const bannerPayload = { image, addedBy: adminId, placement: placementVal, sortOrder: sortOrderSafe }
+  const bannerPayload = {
+    image,
+    addedBy: adminId,
+    placement: placementVal,
+    sortOrder: sortOrderSafe,
+    ...(title != null && String(title).trim() !== '' ? { title: String(title).trim() } : {})
+  }
 
   if (subCategory) {
     const subCat = await SubCategory.findOne({ name: subCategory })

@@ -24,10 +24,15 @@ const heroBannerSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  /** Optional label for festival / wedding hub rows; guest falls back to third category name. */
+  title: {
+    type: String,
+    default: null
+  },
   /** Where this banner appears on the guest home page (admin upload). */
   placement: {
     type: String,
-    enum: ['hero', 'festival', 'kids', 'occasion'],
+    enum: ['hero', 'festival', 'festival_hub', 'wedding', 'kids', 'occasion'],
     default: 'hero'
   },
   sortOrder: {
