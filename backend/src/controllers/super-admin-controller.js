@@ -10,6 +10,7 @@ const {
   approveAdmin, 
   rejectAdmin, 
   getAllProducts, 
+  filterProducts,
   editProduct, 
   deleteProduct,
   getAllVenues,
@@ -86,8 +87,17 @@ const rejectAdminRequest = async (req, res) => {
 
 const getProducts = async (req, res) => {
   try {
-    const products = await getAllProducts()
-    res.status(200).json({ products })
+    const result = await getAllProducts(req.query.page, req.query.limit)
+    res.status(200).json(result)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const filterProductsController = async (req, res) => {
+  try {
+    const result = await filterProducts(req.query)
+    res.status(200).json(result)
   } catch (error) {
     res.status(400).json({ message: error.message })
   }
@@ -99,8 +109,22 @@ const updateProduct = async (req, res) => {
       req.files && req.files.length > 0
         ? req.files.map((f) => multerUpload.getStoredFileUrl(f))
         : undefined
-    const updateData = images ? { ...req.body, images } : req.body
-    const product = await editProduct(req.params.productId, updateData)
+    const body = { ...req.body }
+    if (images) body.images = images
+    // parse JSON strings from form-data
+    const parseField = (key) => {
+      if (typeof body[key] === 'string') {
+        try { body[key] = JSON.parse(body[key]) } catch { /* keep as-is */ }
+      }
+    }
+    parseField('serviceableAreas')
+    parseField('customizationSections')
+    parseField('additionalCategories')
+    parseField('inclusions')
+    parseField('experiences')
+    parseField('keyHighlights')
+    parseField('tags')
+    const product = await editProduct(req.params.productId, body)
     res.status(200).json({ message: 'Product updated successfully', product })
   } catch (error) {
     res.status(400).json({ message: error.message })
@@ -131,8 +155,8 @@ const logout = async (req, res) => {
 
 const getVenues = async (req, res) => {
   try {
-    const venues = await getAllVenues()
-    res.status(200).json({ venues })
+    const result = await getAllVenues(req.query.page, req.query.limit)
+    res.status(200).json(result)
   } catch (error) {
     res.status(400).json({ message: error.message })
   }
@@ -357,6 +381,7 @@ module.exports = {
   approveAdminRequest,
   rejectAdminRequest,
   getProducts,
+  filterProducts: filterProductsController,
   updateProduct,
   removeProduct,
   getVenues,

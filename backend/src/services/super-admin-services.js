@@ -122,35 +122,198 @@ const rejectAdmin = async (adminId) => {
   return admin
 }
 
-const getAllProducts = async () => {
+const getAllProducts = async (page = 1, limit = 10) => {
   const Product = require('../models/product-model')
   const MainCategory = require('../models/main-category-model')
   const SubCategory = require('../models/sub-category-model')
   const ThirdCategory = require('../models/third-category-model')
   const AdditionalCategory = require('../models/additional-category-model')
   const Addon = require('../models/addon-model')
-  const products = await Product.find()
+
+  const pageNum = parseInt(page) || 1
+  const limitNum = Math.min(parseInt(limit) || 10, 50)
+  const skip = (pageNum - 1) * limitNum
+
+  const [products, total] = await Promise.all([
+    Product.find()
+      .skip(skip)
+      .limit(limitNum)
+      .sort({ createdAt: -1 })
+      .populate('mainCategory')
+      .populate('subCategory')
+      .populate('thirdCategory')
+      .populate('additionalCategories')
+      .populate('customizationSections.addons.addon')
+      .populate('addedBy', 'fullName email'),
+    Product.countDocuments()
+  ])
+
+  return {
+    products,
+    pagination: {
+      currentPage: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+      totalProducts: total,
+      hasNext: pageNum < Math.ceil(total / limitNum),
+      hasPrev: pageNum > 1
+    }
+  }
+}
+
+const filterProducts = async (filters) => {
+  const Product = require('../models/product-model')
+  const MainCategory = require('../models/main-category-model')
+  const SubCategory = require('../models/sub-category-model')
+  const ThirdCategory = require('../models/third-category-model')
+  const AdditionalCategory = require('../models/additional-category-model')
+  const Addon = require('../models/addon-model')
+
+  const {
+    name, tier, isFeatured, minPrice, maxPrice,
+    city, mainCategory, subCategory, thirdCategory,
+    page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc'
+  } = filters
+
+  const query = {}
+
+  // name search with regex
+  if (name && name.trim()) {
+    query.name = { $regex: name.trim(), $options: 'i' }
+  }
+
+  if (tier && ['standard', 'premium'].includes(tier)) {
+    query.tier = tier
+  }
+
+  if (isFeatured !== undefined && isFeatured !== '') {
+    query.isFeatured = isFeatured === 'true' || isFeatured === true
+  }
+
+  if (minPrice || maxPrice) {
+    query.price = {}
+    if (minPrice) query.price.$gte = Number(minPrice)
+    if (maxPrice) query.price.$lte = Number(maxPrice)
+  }
+
+  if (city) {
+    query['serviceableAreas.city'] = { $regex: city.trim(), $options: 'i' }
+  }
+
+  // resolve category names to IDs
+  if (mainCategory) {
+    const cat = await MainCategory.findOne({ name: { $regex: mainCategory.trim(), $options: 'i' } })
+    if (cat) query.mainCategory = cat._id
+  }
+
+  if (subCategory) {
+    const cat = await SubCategory.findOne({ name: { $regex: subCategory.trim(), $options: 'i' } })
+    if (cat) query.subCategory = cat._id
+  }
+
+  if (thirdCategory) {
+    const cat = await ThirdCategory.findOne({ name: { $regex: thirdCategory.trim(), $options: 'i' } })
+    if (cat) query.thirdCategory = cat._id
+  }
+
+  const pageNum = parseInt(page) || 1
+  const limitNum = Math.min(parseInt(limit) || 10, 50)
+  const skip = (pageNum - 1) * limitNum
+
+  const validSortFields = ['price', 'createdAt', 'name', 'isFeatured']
+  const sortOptions = {}
+  sortOptions[validSortFields.includes(sortBy) ? sortBy : 'createdAt'] = sortOrder === 'asc' ? 1 : -1
+
+  const [products, total] = await Promise.all([
+    Product.find(query)
+      .skip(skip)
+      .limit(limitNum)
+      .sort(sortOptions)
+      .populate('mainCategory')
+      .populate('subCategory')
+      .populate('thirdCategory')
+      .populate('additionalCategories')
+      .populate('customizationSections.addons.addon')
+      .populate('addedBy', 'fullName email'),
+    Product.countDocuments(query)
+  ])
+
+  return {
+    products,
+    appliedFilters: { name, tier, isFeatured, minPrice, maxPrice, city, mainCategory, subCategory, thirdCategory, sortBy, sortOrder },
+    pagination: {
+      currentPage: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+      totalProducts: total,
+      hasNext: pageNum < Math.ceil(total / limitNum),
+      hasPrev: pageNum > 1
+    }
+  }
+}
+
+const editProduct = async (productId, updateData) => {
+  const Product = require('../models/product-model')
+  const MainCategory = require('../models/main-category-model')
+  const SubCategory = require('../models/sub-category-model')
+  const ThirdCategory = require('../models/third-category-model')
+  const AdditionalCategory = require('../models/additional-category-model')
+
+  const allowed = [
+    'name', 'description', 'price', 'discountedPrice',
+    'images', 'isFeatured', 'tier', 'serviceableAreas',
+    'location', 'setupDuration', 'teamSize', 'advanceBooking',
+    'cancellationPolicy', 'youtubeVideoLink',
+    'inclusions', 'experiences', 'keyHighlights',
+    'customizationSections', 'additionalCategories', 'tags'
+  ]
+
+  const update = {}
+  for (const key of allowed) {
+    if (updateData[key] !== undefined) update[key] = updateData[key]
+  }
+
+  // validate discountedPrice < price
+  if (update.discountedPrice != null) {
+    const existing = await Product.findById(productId).select('price')
+    const basePrice = update.price ?? existing?.price
+    if (Number(update.discountedPrice) >= Number(basePrice)) {
+      throw new Error('Discounted price must be less than original price')
+    }
+  }
+
+  // resolve category names to IDs if sent as strings
+  if (updateData.mainCategory && typeof updateData.mainCategory === 'string' && !updateData.mainCategory.match(/^[a-f\d]{24}$/i)) {
+    const cat = await MainCategory.findOne({ name: updateData.mainCategory })
+    if (!cat) throw new Error(`Main category '${updateData.mainCategory}' not found`)
+    update.mainCategory = cat._id
+  } else if (updateData.mainCategory) {
+    update.mainCategory = updateData.mainCategory
+  }
+
+  if (updateData.subCategory && typeof updateData.subCategory === 'string' && !updateData.subCategory.match(/^[a-f\d]{24}$/i)) {
+    const cat = await SubCategory.findOne({ name: updateData.subCategory })
+    if (!cat) throw new Error(`Sub category '${updateData.subCategory}' not found`)
+    update.subCategory = cat._id
+  } else if (updateData.subCategory) {
+    update.subCategory = updateData.subCategory
+  }
+
+  if (updateData.thirdCategory && typeof updateData.thirdCategory === 'string' && !updateData.thirdCategory.match(/^[a-f\d]{24}$/i)) {
+    const cat = await ThirdCategory.findOne({ name: updateData.thirdCategory })
+    if (!cat) throw new Error(`Third category '${updateData.thirdCategory}' not found`)
+    update.thirdCategory = cat._id
+  } else if (updateData.thirdCategory) {
+    update.thirdCategory = updateData.thirdCategory
+  }
+
+  const product = await Product.findByIdAndUpdate(productId, update, { new: true })
     .populate('mainCategory')
     .populate('subCategory')
     .populate('thirdCategory')
     .populate('additionalCategories')
     .populate('customizationSections.addons.addon')
-    .populate('addedBy')
-  return products
-}
+    .populate('addedBy', 'fullName email')
 
-const editProduct = async (productId, updateData) => {
-  const Product = require('../models/product-model')
-  const product = await Product.findByIdAndUpdate(
-    productId,
-    updateData,
-    { new: true }
-  )
-  
-  if (!product) {
-    throw new Error('Product not found')
-  }
-  
+  if (!product) throw new Error('Product not found')
   return product
 }
 
@@ -197,34 +360,69 @@ const logoutSuperAdmin = async (refreshTokenValue) => {
 
 const updateVenue = async (venueId, updateData) => {
   const Venue = require('../models/venue-model')
-  const venue = await Venue.findByIdAndUpdate(
-    venueId,
-    updateData,
-    { new: true }
-  )
-  
-  if (!venue) {
-    throw new Error('Venue not found')
+
+  const allowed = [
+    'name', 'description', 'images', 'startingPrice',
+    'location', 'capacity', 'typesOfVenues',
+    'accessibilityFeatures', 'facilities', 'restrictions',
+    'otherInformation', 'supportedEvents'
+  ]
+
+  const update = {}
+  for (const key of allowed) {
+    if (updateData[key] !== undefined) update[key] = updateData[key]
   }
-  
+
+  // parse JSON strings from form-data
+  const parseIfString = (key) => {
+    if (typeof update[key] === 'string') {
+      try { update[key] = JSON.parse(update[key]) } catch { /* keep as-is */ }
+    }
+  }
+  parseIfString('location')
+  parseIfString('capacity')
+  parseIfString('otherInformation')
+  parseIfString('typesOfVenues')
+  parseIfString('accessibilityFeatures')
+  parseIfString('facilities')
+  parseIfString('restrictions')
+  parseIfString('supportedEvents')
+
+  if (update.startingPrice !== undefined) update.startingPrice = Number(update.startingPrice)
+
+  const venue = await Venue.findByIdAndUpdate(venueId, update, { new: true })
+  if (!venue) throw new Error('Venue not found')
   return venue
 }
 
 const removeVenue = async (venueId) => {
   const Venue = require('../models/venue-model')
   const venue = await Venue.findByIdAndDelete(venueId)
-  
-  if (!venue) {
-    throw new Error('Venue not found')
-  }
-  
+  if (!venue) throw new Error('Venue not found')
   return venue
 }
 
-const getAllVenues = async () => {
+const getAllVenues = async (page = 1, limit = 10) => {
   const Venue = require('../models/venue-model')
-  const venues = await Venue.find()
-  return venues
+  const pageNum = parseInt(page) || 1
+  const limitNum = Math.min(parseInt(limit) || 10, 50)
+  const skip = (pageNum - 1) * limitNum
+
+  const [venues, total] = await Promise.all([
+    Venue.find().skip(skip).limit(limitNum).sort({ createdAt: -1 }),
+    Venue.countDocuments()
+  ])
+
+  return {
+    venues,
+    pagination: {
+      currentPage: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+      totalVenues: total,
+      hasNext: pageNum < Math.ceil(total / limitNum),
+      hasPrev: pageNum > 1
+    }
+  }
 }
 
 const getAllAdmins = async () => {
@@ -366,6 +564,7 @@ module.exports = {
   approveAdmin, 
   rejectAdmin, 
   getAllProducts, 
+  filterProducts,
   editProduct, 
   deleteProduct,
   getAllVenues,

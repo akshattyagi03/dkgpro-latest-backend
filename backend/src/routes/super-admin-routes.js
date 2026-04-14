@@ -38,6 +38,8 @@ router.post("/approve-admin/:adminId", isSuperAdmin, superAdminController.approv
 router.post("/reject-admin/:adminId", isSuperAdmin, superAdminController.rejectAdminRequest)
 //get all products
 router.get("/products", isSuperAdmin, superAdminController.getProducts)
+//filter products
+router.get("/products/filter", isSuperAdmin, superAdminController.filterProducts)
 //edit product
 router.put("/edit-product/:productId", isSuperAdmin, wrapUpload(upload.array('images', 10)), superAdminController.updateProduct)
 //delete product
