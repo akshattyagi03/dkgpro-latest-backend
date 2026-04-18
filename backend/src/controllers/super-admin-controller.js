@@ -19,8 +19,11 @@ const {
   getAllAdmins,
   getAllInquiries,
   getAllBlogs,
+  getBlogById,
   updateBlog,
   removeBlog,
+  listHomeProductSections,
+  upsertHomeProductSection,
   logoutSuperAdmin
 } = require('../services/super-admin-services')
 
@@ -29,7 +32,10 @@ const {
   addMainCategory,
   addSubCategory,
   addThirdCategory,
-  addAdditionalCategory
+  addAdditionalCategory,
+  addHeroBanner,
+  getSuperAdminOrders,
+  getSuperAdminOrderById
 } = require('../services/admin-services')
 
 const multerUpload = require('../../configuration/multer-config')
@@ -108,18 +114,18 @@ const filterProductsController = async (req, res) => {
 
 const updateProduct = async (req, res) => {
   try {
-    const images =
+    const newImageUrls =
       req.files && req.files.length > 0
         ? req.files.map((f) => multerUpload.getStoredFileUrl(f))
-        : undefined
+        : []
     const body = { ...req.body }
-    if (images) body.images = images
     // parse JSON strings from form-data
     const parseField = (key) => {
       if (typeof body[key] === 'string') {
         try { body[key] = JSON.parse(body[key]) } catch { /* keep as-is */ }
       }
     }
+    parseField('images')
     parseField('serviceableAreas')
     parseField('customizationSections')
     parseField('additionalCategories')
@@ -127,6 +133,10 @@ const updateProduct = async (req, res) => {
     parseField('experiences')
     parseField('keyHighlights')
     parseField('tags')
+    if (newImageUrls.length > 0) {
+      const existing = Array.isArray(body.images) ? body.images : []
+      body.images = [...existing, ...newImageUrls]
+    }
     const product = await editProduct(req.params.productId, body)
     res.status(200).json({ message: 'Product updated successfully', product })
   } catch (error) {
@@ -167,11 +177,18 @@ const getVenues = async (req, res) => {
 
 const editVenue = async (req, res) => {
   try {
-    const images =
+    const newImageUrls =
       req.files && req.files.length > 0
         ? req.files.map((f) => multerUpload.getStoredFileUrl(f))
-        : undefined
-    const updateData = images ? { ...req.body, images } : req.body
+        : []
+    const updateData = { ...req.body }
+    if (typeof updateData.images === 'string') {
+      try { updateData.images = JSON.parse(updateData.images) } catch { /* keep */ }
+    }
+    if (newImageUrls.length > 0) {
+      const existing = Array.isArray(updateData.images) ? updateData.images : []
+      updateData.images = [...existing, ...newImageUrls]
+    }
     const venue = await updateVenue(req.params.venueId, updateData)
     res.status(200).json({ message: 'Venue updated successfully', venue })
   } catch (error) {
@@ -255,6 +272,35 @@ const getBlogs = async (req, res) => {
     res.status(200).json(result)
   } catch (error) {
     res.status(400).json({ message: error.message })
+  }
+}
+
+const getBlogByIdView = async (req, res) => {
+  try {
+    const blog = await getBlogById(req.params.blogId)
+    if (!blog) return res.status(404).json({ message: 'Blog not found' })
+    res.status(200).json({ blog })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const getOrders = async (req, res) => {
+  try {
+    const { page, limit } = req.query
+    const result = await getSuperAdminOrders(page, limit)
+    res.status(200).json(result)
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const getOrderById = async (req, res) => {
+  try {
+    const order = await getSuperAdminOrderById(req.params.orderId)
+    res.status(200).json({ order })
+  } catch (error) {
+    res.status(error.message === 'Order not found' ? 404 : 400).json({ message: error.message })
   }
 }
 
@@ -402,6 +448,37 @@ const deleteAdditionalCategory = async (req, res) => {
   }
 }
 
+const addHeroSectionBanner = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'Banner image is required' })
+    const banner = await addHeroBanner(
+      { ...req.body, image: req.file.path },
+      { superAdminId: req.superAdmin._id }
+    )
+    res.status(201).json({ message: 'Hero banner added successfully', banner })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const getHomeProductSections = async (req, res) => {
+  try {
+    const sections = await listHomeProductSections()
+    res.status(200).json({ sections })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const putHomeProductSection = async (req, res) => {
+  try {
+    const section = await upsertHomeProductSection(req.params.slug, req.body)
+    res.status(200).json({ message: 'Home product section saved', section })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -424,6 +501,9 @@ module.exports = {
   getInquiries,
   logout,
   getBlogs,
+  getBlogById: getBlogByIdView,
+  getOrders,
+  getOrderById,
   editBlog,
   deleteBlog,
   getCategoryTree: getCategoryTreeView,
@@ -434,5 +514,8 @@ module.exports = {
   updateThirdCategory,
   deleteThirdCategory,
   updateAdditionalCategory,
-  deleteAdditionalCategory
+  deleteAdditionalCategory,
+  addHeroSectionBanner,
+  getHomeProductSections,
+  putHomeProductSection
 }

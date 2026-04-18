@@ -956,17 +956,36 @@ const verifyAdminPhoneLogin = async (userData, res) => {
   return { admin: { id: admin._id, fullName: admin.fullName, email: admin.email, phoneNumber: admin.phoneNumber } }
 }
 
-const addHeroBanner = async (bannerData, adminId) => {
+const addHeroBanner = async (bannerData, attribution = {}) => {
   const HeroBanner = require('../models/hero-banner-model')
   const SubCategory = require('../models/sub-category-model')
   const ThirdCategory = require('../models/third-category-model')
 
   const { image, subCategory, thirdCategory, placement, sortOrder, title } = bannerData
 
+  const adminId =
+    attribution && typeof attribution === 'object' && 'adminId' in attribution
+      ? attribution.adminId
+      : attribution
+  const superAdminId =
+    attribution && typeof attribution === 'object' && 'superAdminId' in attribution
+      ? attribution.superAdminId
+      : null
+
   if (!subCategory && !thirdCategory) throw new Error('Provide either subCategory or thirdCategory')
   if (subCategory && thirdCategory) throw new Error('Provide only one of subCategory or thirdCategory')
+  if (!adminId && !superAdminId) throw new Error('Admin or super-admin attribution required')
 
-  const allowedPlacements = ['hero', 'festival', 'festival_hub', 'wedding', 'kids', 'occasion']
+  const allowedPlacements = [
+    'hero',
+    'festival',
+    'festival_hub',
+    'wedding',
+    'wedding_extra',
+    'romantic_couple',
+    'kids',
+    'occasion'
+  ]
   const placementVal =
     placement && allowedPlacements.includes(String(placement)) ? String(placement) : 'hero'
   const sortVal =
@@ -977,7 +996,8 @@ const addHeroBanner = async (bannerData, adminId) => {
 
   const bannerPayload = {
     image,
-    addedBy: adminId,
+    ...(adminId ? { addedBy: adminId } : {}),
+    ...(superAdminId ? { addedBySuperAdmin: superAdminId } : {}),
     placement: placementVal,
     sortOrder: sortOrderSafe,
     ...(title != null && String(title).trim() !== '' ? { title: String(title).trim() } : {})
@@ -1196,6 +1216,82 @@ const getAdminOrderById = async (adminId, orderId) => {
   }
 }
 
+/** All platform orders (super admin) — same response shape as getAdminOrders, with full line items. */
+const getSuperAdminOrders = async (page = 1, limit = 10) => {
+  const Order = require('../models/order-model')
+
+  const pageNum = parseInt(page) || 1
+  const limitNum = Math.min(parseInt(limit) || 10, 50)
+  const skip = (pageNum - 1) * limitNum
+
+  const orders = await Order.find({})
+    .skip(skip)
+    .limit(limitNum)
+    .sort({ createdAt: -1 })
+    .populate('user', 'fullName email phoneNumber')
+    .populate('items.product', 'name price images')
+
+  const total = await Order.countDocuments({})
+
+  const formatted = orders.map((o) => {
+    const allItems = o.items.filter((item) => item.product)
+    const myTotal = allItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    return {
+      id: o._id,
+      orderNumber: `ORD-${o._id.toString().slice(-6).toUpperCase()}`,
+      userName: o.user?.fullName || 'N/A',
+      userEmail: o.user?.email || 'N/A',
+      userPhone: o.user?.phoneNumber || 'N/A',
+      items: allItems,
+      myTotal,
+      orderTotal: o.totalAmount,
+      status: o.status,
+      shippingAddress: o.shippingAddress,
+      createdAt: o.createdAt,
+      updatedAt: o.updatedAt
+    }
+  })
+
+  return {
+    orders: formatted,
+    pagination: {
+      currentPage: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+      totalOrders: total,
+      hasNext: pageNum < Math.ceil(total / limitNum),
+      hasPrev: pageNum > 1
+    }
+  }
+}
+
+const getSuperAdminOrderById = async (orderId) => {
+  const Order = require('../models/order-model')
+
+  const o = await Order.findById(orderId)
+    .populate('user', 'fullName email phoneNumber')
+    .populate('items.product', 'name price images')
+
+  if (!o) throw new Error('Order not found')
+
+  const allItems = o.items.filter((item) => item.product)
+  const myTotal = allItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+
+  return {
+    id: o._id,
+    orderNumber: `ORD-${o._id.toString().slice(-6).toUpperCase()}`,
+    userName: o.user?.fullName || 'N/A',
+    userEmail: o.user?.email || 'N/A',
+    userPhone: o.user?.phoneNumber || 'N/A',
+    items: allItems,
+    myTotal,
+    orderTotal: o.totalAmount,
+    status: o.status,
+    shippingAddress: o.shippingAddress,
+    createdAt: o.createdAt,
+    updatedAt: o.updatedAt
+  }
+}
+
 const updateOrderStatus = async (orderId, status) => {
   const Order = require('../models/order-model')
   const validStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']
@@ -1337,6 +1433,8 @@ module.exports = {
   getVenues,
   getAdminOrders,
   getAdminOrderById,
+  getSuperAdminOrders,
+  getSuperAdminOrderById,
   updateOrderStatus,
   getAdminAnalytics,
   getOrderForInvoice,

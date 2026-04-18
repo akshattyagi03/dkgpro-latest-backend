@@ -52,8 +52,12 @@ router.put("/edit-venue/:venueId", isSuperAdmin, wrapUpload(upload.array('images
 router.delete("/delete-venue/:venueId", isSuperAdmin, superAdminController.deleteVenue)
 //get all inquiries
 router.get("/inquiries", isSuperAdmin, superAdminController.getInquiries)
+//orders (platform-wide, read-only list/detail)
+router.get("/orders", isSuperAdmin, superAdminController.getOrders)
+router.get("/orders/:orderId", isSuperAdmin, superAdminController.getOrderById)
 //blog management
 router.get("/blogs", isSuperAdmin, superAdminController.getBlogs)
+router.get("/blogs/:blogId", isSuperAdmin, superAdminController.getBlogById)
 router.put("/blogs/:blogId", isSuperAdmin, wrapUpload(upload.single('featuredImage')), superAdminController.editBlog)
 router.delete("/blogs/:blogId", isSuperAdmin, superAdminController.deleteBlog)
 //logout super admin
@@ -72,5 +76,10 @@ router.delete("/third-category/:id", isSuperAdmin, superAdminController.deleteTh
 //additional category
 router.put("/additional-category/:id", isSuperAdmin, wrapUpload(upload.single('bannerImage')), superAdminController.updateAdditionalCategory)
 router.delete("/additional-category/:id", isSuperAdmin, superAdminController.deleteAdditionalCategory)
+// Same payload as POST /admins/add-hero-section-banner — multipart `image` + subCategory XOR thirdCategory (names).
+router.post("/add-hero-section-banner", isSuperAdmin, wrapUpload(upload.single('image')), superAdminController.addHeroSectionBanner)
+// Home page product rows (optional overrides per slug — see home-sections-service DEFAULT_SECTIONS)
+router.get("/home-product-sections", isSuperAdmin, superAdminController.getHomeProductSections)
+router.put("/home-product-sections/:slug", isSuperAdmin, superAdminController.putHomeProductSection)
 
 module.exports = router

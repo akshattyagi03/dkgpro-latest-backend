@@ -587,6 +587,11 @@ const getAllBlogs = async (page = 1, limit = 10, filters = {}) => {
   }
 }
 
+const getBlogById = async (blogId) => {
+  const Blog = require('../models/blog-model')
+  return Blog.findById(blogId).populate('author', 'fullName email')
+}
+
 const updateBlog = async (blogId, updateData) => {
   const Blog = require('../models/blog-model')
 
@@ -636,6 +641,42 @@ const removeBlog = async (blogId) => {
   return blog
 }
 
+const listHomeProductSections = async () => {
+  const HomeProductSection = require('../models/home-product-section-model')
+  return HomeProductSection.find({}).sort({ sortOrder: 1, slug: 1 }).lean()
+}
+
+const upsertHomeProductSection = async (slug, body = {}) => {
+  const mongoose = require('mongoose')
+  const HomeProductSection = require('../models/home-product-section-model')
+  const normalized = String(slug || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+  if (!normalized) throw new Error('Invalid slug')
+
+  const update = {}
+  if (body.title !== undefined) update.title = body.title
+  if (body.subtitle !== undefined) update.subtitle = body.subtitle
+  if (body.exploreHref !== undefined) update.exploreHref = body.exploreHref
+  if (body.sortOrder !== undefined) update.sortOrder = Number(body.sortOrder)
+  if (body.isActive !== undefined) update.isActive = Boolean(body.isActive)
+  if (body.productIds !== undefined) {
+    const ids = Array.isArray(body.productIds) ? body.productIds : []
+    update.productIds = ids
+      .filter((id) => mongoose.Types.ObjectId.isValid(String(id)))
+      .map((id) => new mongoose.Types.ObjectId(String(id)))
+  }
+
+  update.slug = normalized
+  return HomeProductSection.findOneAndUpdate({ slug: normalized }, update, {
+    upsert: true,
+    new: true,
+    runValidators: true,
+    setDefaultsOnInsert: true
+  }).lean()
+}
+
 module.exports = { 
   sendSuperAdminOTP, 
   verifySuperAdminOTP, 
@@ -657,8 +698,11 @@ module.exports = {
   getAllAdmins,
   getAllInquiries,
   getAllBlogs,
+  getBlogById,
   updateBlog,
   removeBlog,
+  listHomeProductSections,
+  upsertHomeProductSection,
   refreshSuperAdminAccessToken,
   logoutSuperAdmin
 }

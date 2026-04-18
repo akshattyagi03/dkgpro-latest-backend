@@ -527,7 +527,7 @@ const verifyPhoneLogin = async (req, res) => {
 const addHeroBannerController = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'Banner image is required' })
-    const banner = await addHeroBanner({ ...req.body, image: req.file.path }, req.admin._id)
+    const banner = await addHeroBanner({ ...req.body, image: req.file.path }, { adminId: req.admin._id })
     res.status(201).json({ message: 'Hero banner added successfully', banner })
   } catch (error) {
     res.status(400).json({ message: error.message })

@@ -1,3 +1,4 @@
+const { getMergedHomeProductSections } = require('./home-sections-service')
 const User = require('../models/user-model')
 const RefreshToken = require('../models/refresh-token-model')
 const OTP = require('../models/otp-model')
@@ -295,12 +296,21 @@ const getProducts = async () => {
         .lean()
     : []
 
+  let homeProductSections = []
+  try {
+    homeProductSections = await getMergedHomeProductSections()
+  } catch (e) {
+    console.error('getMergedHomeProductSections:', e.message)
+    homeProductSections = []
+  }
+
   return {
     heroBanners,
     featuredProducts,
     premiumProducts,
     allProducts,
-    eventTypeBanners
+    eventTypeBanners,
+    homeProductSections
   }
 }
 

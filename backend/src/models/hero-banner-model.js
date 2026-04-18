@@ -15,10 +15,17 @@ const heroBannerSchema = new mongoose.Schema({
     ref: 'ThirdCategory',
     default: null
   },
+  /** Vendor admin who uploaded (optional when `addedBySuperAdmin` is set). */
   addedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Admin',
-    required: true
+    default: null
+  },
+  /** Super-admin upload attribution (optional when `addedBy` is set). */
+  addedBySuperAdmin: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SuperAdmin',
+    default: null
   },
   isActive: {
     type: Boolean,
@@ -32,7 +39,16 @@ const heroBannerSchema = new mongoose.Schema({
   /** Where this banner appears on the guest home page (admin upload). */
   placement: {
     type: String,
-    enum: ['hero', 'festival', 'festival_hub', 'wedding', 'kids', 'occasion'],
+    enum: [
+      'hero',
+      'festival',
+      'festival_hub',
+      'wedding',
+      'wedding_extra',
+      'romantic_couple',
+      'kids',
+      'occasion'
+    ],
     default: 'hero'
   },
   sortOrder: {
@@ -40,5 +56,12 @@ const heroBannerSchema = new mongoose.Schema({
     default: 0
   }
 }, { timestamps: true })
+
+heroBannerSchema.pre('validate', function (next) {
+  if (!this.addedBy && !this.addedBySuperAdmin) {
+    return next(new Error('Banner must have either addedBy (admin) or addedBySuperAdmin'))
+  }
+  next()
+})
 
 module.exports = mongoose.model('HeroBanner', heroBannerSchema)
