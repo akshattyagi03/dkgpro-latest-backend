@@ -61,6 +61,8 @@ router.get('/get-venues', userController.getVenues)
 router.get('/venue/:venueId', userController.getVenueDetails)
 //raise an enquiry
 router.post('/raise-inquiry', userController.raiseInquiry)
+//contact form
+router.post('/contact', userController.submitContact)
 //track product interest
 router.post('/track-interest/:productId', isLoggedIn, userController.trackInterest)
 //all main categories

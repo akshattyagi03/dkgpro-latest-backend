@@ -585,4 +585,123 @@ const sendOrderNotificationToSuperAdmin = async (superAdminEmail, order) => {
   await transporter.sendMail(mailOptions)
 }
 
-module.exports = { sendOTP, sendOrderConfirmationEmail, sendOrderNotificationToSuperAdmin, generateInvoicePDF }
+const sendInquiryNotification = async (inquiry) => {
+  const SuperAdmin = require('../models/super-admin-model')
+  const superAdmins = await SuperAdmin.find().select('email').lean()
+  if (!superAdmins.length) return
+
+  const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px">
+      <h2 style="color:#667eea">📋 New Inquiry Received</h2>
+      <p>A new event inquiry has been submitted. Details below:</p>
+      <table style="width:100%;border-collapse:collapse;margin:20px 0">
+        <tr style="background:#f5f5f5">
+          <td style="padding:10px;font-weight:bold;width:40%">Full Name</td>
+          <td style="padding:10px">${inquiry.fullName}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px;font-weight:bold">Mobile No</td>
+          <td style="padding:10px">${inquiry.mobileNo}</td>
+        </tr>
+        <tr style="background:#f5f5f5">
+          <td style="padding:10px;font-weight:bold">Event Type</td>
+          <td style="padding:10px">${inquiry.eventType}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px;font-weight:bold">Start Date</td>
+          <td style="padding:10px">${formatDate(inquiry.startDate)}</td>
+        </tr>
+        <tr style="background:#f5f5f5">
+          <td style="padding:10px;font-weight:bold">End Date</td>
+          <td style="padding:10px">${formatDate(inquiry.endDate)}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px;font-weight:bold">Start Time</td>
+          <td style="padding:10px">${inquiry.startTime}</td>
+        </tr>
+        <tr style="background:#f5f5f5">
+          <td style="padding:10px;font-weight:bold">End Time</td>
+          <td style="padding:10px">${inquiry.endTime}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px;font-weight:bold">Guests</td>
+          <td style="padding:10px">${inquiry.guests}</td>
+        </tr>
+        ${inquiry.requirements ? `
+        <tr style="background:#f5f5f5">
+          <td style="padding:10px;font-weight:bold">Requirements</td>
+          <td style="padding:10px">${inquiry.requirements}</td>
+        </tr>` : ''}
+        ${inquiry.venue ? `
+        <tr>
+          <td style="padding:10px;font-weight:bold">Venue</td>
+          <td style="padding:10px">${inquiry.venue.name || inquiry.venue}${inquiry.venue.location?.address ? ` — ${inquiry.venue.location.address}` : ''}</td>
+        </tr>` : ''}
+      </table>
+      <p style="color:#999;font-size:0.85em;margin-top:20px">This inquiry was submitted via DKGPro. Please follow up with the customer at the earliest.</p>
+    </div>
+  `
+
+  await Promise.all(
+    superAdmins.map(sa =>
+      transporter.sendMail({
+        from: `DKGPro <${process.env.EMAIL_USER}>`,
+        to: sa.email,
+        subject: `New Inquiry - ${inquiry.eventType} by ${inquiry.fullName}`,
+        html
+      }).catch(err => console.error(`Failed to send inquiry email to ${sa.email}:`, err.message))
+    )
+  )
+}
+
+const sendContactNotification = async (contact) => {
+  const SuperAdmin = require('../models/super-admin-model')
+  const superAdmins = await SuperAdmin.find().select('email').lean()
+  if (!superAdmins.length) return
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:20px;border:1px solid #eee;border-radius:8px">
+      <h2 style="color:#667eea">📩 New Contact Message</h2>
+      <p>A new contact form submission has been received:</p>
+      <table style="width:100%;border-collapse:collapse;margin:20px 0">
+        <tr style="background:#f5f5f5">
+          <td style="padding:10px;font-weight:bold;width:40%">Name</td>
+          <td style="padding:10px">${contact.name}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px;font-weight:bold">Email</td>
+          <td style="padding:10px"><a href="mailto:${contact.email}">${contact.email}</a></td>
+        </tr>
+        <tr style="background:#f5f5f5">
+          <td style="padding:10px;font-weight:bold">Phone</td>
+          <td style="padding:10px">${contact.phone}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px;font-weight:bold">Service Type</td>
+          <td style="padding:10px">${contact.serviceType}</td>
+        </tr>
+        ${contact.message ? `
+        <tr style="background:#f5f5f5">
+          <td style="padding:10px;font-weight:bold">Message</td>
+          <td style="padding:10px">${contact.message}</td>
+        </tr>` : ''}
+      </table>
+      <p style="color:#999;font-size:0.85em;margin-top:20px">Submitted via DKGPro contact form. Please follow up at the earliest.</p>
+    </div>
+  `
+
+  await Promise.all(
+    superAdmins.map(sa =>
+      transporter.sendMail({
+        from: `DKGPro <${process.env.EMAIL_USER}>`,
+        to: sa.email,
+        subject: `New Contact - ${contact.serviceType} by ${contact.name}`,
+        html
+      }).catch(err => console.error(`Failed to send contact email to ${sa.email}:`, err.message))
+    )
+  )
+}
+
+module.exports = { sendOTP, sendOrderConfirmationEmail, sendOrderNotificationToSuperAdmin, generateInvoicePDF, sendInquiryNotification, sendContactNotification }

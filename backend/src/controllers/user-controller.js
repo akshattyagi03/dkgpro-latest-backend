@@ -27,6 +27,7 @@ const {
   getAllMainCategories,
   trackProductInterest,
   raiseInquiry,
+  submitContact,
   getVenuesForUsers,
   getVenueDetails,
   createReview,
@@ -413,6 +414,15 @@ const raiseInquiryController = async (req, res) => {
   }
 }
 
+const submitContactController = async (req, res) => {
+  try {
+    const contact = await submitContact(req.body)
+    res.status(HTTP_STATUS.CREATED).json({ message: 'Message sent successfully', contact })
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
 const getPublishedBlogsController = async (req, res) => {
   try {
     const { page, limit, category } = req.query
@@ -521,6 +531,7 @@ module.exports = {
   getAllMainCategories: getAllMainCategoriesController,
   trackInterest: trackInterestController,
   raiseInquiry: raiseInquiryController,
+  submitContact: submitContactController,
   getVenues: getVenuesController,
   getVenueById: getVenueByIdController,
   getVenueDetails: getVenueDetailsController,

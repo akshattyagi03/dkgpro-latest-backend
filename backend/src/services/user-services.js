@@ -1050,6 +1050,8 @@ const getVenueDetails = async (venueId) => {
 
 const raiseInquiry = async (inquiryData) => {
   const Inquiry = require('../models/inquiry-model')
+  const Venue = require('../models/venue-model')
+  const { sendInquiryNotification } = require('../utils/email-service')
   const {
     fullName: fn,
     mobileNo: mob,
@@ -1094,6 +1096,13 @@ const raiseInquiry = async (inquiryData) => {
     venue
   })
   await inquiry.save()
+
+  // notify all super admins via email (fire and forget)
+  const populatedInquiry = await inquiry.populate('venue', 'name location description')
+  sendInquiryNotification(populatedInquiry).catch(err =>
+    console.error('Failed to send inquiry notification:', err.message)
+  )
+
   return inquiry
 }
 
@@ -1137,6 +1146,22 @@ const getBlogBySlug = async (slug) => {
 
   if (!blog) throw new Error('Blog not found')
   return blog
+}
+
+const submitContact = async (contactData) => {
+  const Contact = require('../models/contact-model')
+  const { sendContactNotification } = require('../utils/email-service')
+
+  const { name, phone, serviceType, email, message } = contactData
+
+  const contact = new Contact({ name, phone, serviceType, email, message })
+  await contact.save()
+
+  sendContactNotification(contact).catch(err =>
+    console.error('Failed to send contact notification:', err.message)
+  )
+
+  return contact
 }
 
 const getSimilarProducts = async (productId, limit = 8) => {
@@ -1289,5 +1314,5 @@ const getSubCategoryPage = async (subCategoryName) => {
   }
 }
 
-module.exports = {getProfileService, sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, syncCheckoutCart, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, getVenuesForUsers, getVenueDetails, createReview, createVenueReview, editReview, deleteReview, editVenueReview, deleteVenueReview, getSimilarProducts, getPublishedBlogs, getBlogBySlug, getSubCategoryPage }
+module.exports = {getProfileService, sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, syncCheckoutCart, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, submitContact, getVenuesForUsers, getVenueDetails, createReview, createVenueReview, editReview, deleteReview, editVenueReview, deleteVenueReview, getSimilarProducts, getPublishedBlogs, getBlogBySlug, getSubCategoryPage }
 
