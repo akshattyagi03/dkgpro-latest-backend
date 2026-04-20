@@ -1,0 +1,164 @@
+[
+  {
+    "_id": { "$oid": "bbbbbb000000000000000001" },
+    "name": "CANDLELIGHT DINNERS",
+    "mainCategory": { "$oid": "aaaaaa000000000000000001" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000002" },
+    "name": "DECORATIONS",
+    "mainCategory": { "$oid": "aaaaaa000000000000000001" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000003" },
+    "name": "ANNIVERSARY GIFTS",
+    "mainCategory": { "$oid": "aaaaaa000000000000000001" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000004" },
+    "name": "BIRTHDAY DECORATIONS",
+    "mainCategory": { "$oid": "aaaaaa000000000000000002" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000005" },
+    "name": "CANDLELIGHT DINNERS",
+    "mainCategory": { "$oid": "aaaaaa000000000000000002" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000006" },
+    "name": "BIRTHDAY GIFTS",
+    "mainCategory": { "$oid": "aaaaaa000000000000000002" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000007" },
+    "name": "CAKES & BOUQUETS",
+    "mainCategory": { "$oid": "aaaaaa000000000000000003" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000008" },
+    "name": "CATEGORIES",
+    "mainCategory": { "$oid": "aaaaaa000000000000000003" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000009" },
+    "name": "DIGITAL GIFTS",
+    "mainCategory": { "$oid": "aaaaaa000000000000000003" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000010" },
+    "name": "CATEGORIES",
+    "mainCategory": { "$oid": "aaaaaa000000000000000004" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000011" },
+    "name": "5 STAR PROPERTIES",
+    "mainCategory": { "$oid": "aaaaaa000000000000000004" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000012" },
+    "name": "OUR RECOMMENDATIONS",
+    "mainCategory": { "$oid": "aaaaaa000000000000000004" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000013" },
+    "name": "BY TYPE",
+    "mainCategory": { "$oid": "aaaaaa000000000000000005" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000014" },
+    "name": "BY OCCASION",
+    "mainCategory": { "$oid": "aaaaaa000000000000000005" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000015" },
+    "name": "KIDS THEME DECOR",
+    "mainCategory": { "$oid": "aaaaaa000000000000000005" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000016" },
+    "name": "By Occasion",
+    "mainCategory": { "$oid": "aaaaaa000000000000000006" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000017" },
+    "name": "Requirement",
+    "mainCategory": { "$oid": "aaaaaa000000000000000007" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "bbbbbb000000000000000018" },
+    "name": "By Event Type",
+    "mainCategory": { "$oid": "aaaaaa000000000000000007" },
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  }
+]

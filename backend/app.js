@@ -7,6 +7,7 @@ const app=express()
 const userRoutes=require("./src/routes/user-routes")
 const adminRoutes=require("./src/routes/admin-routes")
 const superAdminRoutes=require("./src/routes/super-admin-routes")
+const oauthRoutes=require("./src/routes/oauth-routes")
 
 connectDB()
 startInterestDecayCron()
@@ -131,4 +132,5 @@ app.get("/payment", async (req, res)=>{
 app.use("/users", userRoutes)
 app.use("/admins", adminRoutes)
 app.use("/superadmins", superAdminRoutes)
+app.use("/auth", oauthRoutes)
 module.exports=app

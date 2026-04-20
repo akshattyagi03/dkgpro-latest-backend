@@ -1,0 +1,58 @@
+[
+  {
+    "_id": { "$oid": "aaaaaa000000000000000001" },
+    "name": "Anniversary",
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "aaaaaa000000000000000002" },
+    "name": "Birthday",
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "aaaaaa000000000000000003" },
+    "name": "Gifts",
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "aaaaaa000000000000000004" },
+    "name": "Candle Light Dinners",
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "aaaaaa000000000000000005" },
+    "name": "Decorations",
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "aaaaaa000000000000000006" },
+    "name": "Festivals",
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  },
+  {
+    "_id": { "$oid": "aaaaaa000000000000000007" },
+    "name": "Kid's Celebration",
+    "bannerImage": null,
+    "createdAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "updatedAt": { "$date": "2026-04-20T18:41:03.120Z" },
+    "__v": 0
+  }
+]
