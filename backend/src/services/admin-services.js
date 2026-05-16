@@ -26,6 +26,21 @@ const generateAdminTokens = async (adminId) => {
   return { accessToken, refreshToken: refreshTokenValue }
 }
 
+/**
+ * Products visible to a vendor admin: rows they created plus catalog-seed demo
+ * inventory (see dummyContentSeed.js). Super admin already uses an unscoped list.
+ */
+const productScopeForAdmin = (adminId) => ({
+  $or: [{ addedBy: adminId }, { catalogSeed: true }]
+})
+
+const canAdminMutateProduct = (productDoc, adminId) => {
+  if (!productDoc) return false
+  if (productDoc.catalogSeed === true) return true
+  if (!productDoc.addedBy) return false
+  return productDoc.addedBy.toString() === adminId.toString()
+}
+
 const sendAdminOTP = async (adminData) => {
   const { email } = adminData
 
@@ -267,7 +282,7 @@ const getProducts = async (adminId) => {
   const ThirdCategory = require('../models/third-category-model')
   const AdditionalCategory = require('../models/additional-category-model')
   const Addons = require('../models/addon-model')
-  const products = await Product.find({ addedBy: adminId })
+  const products = await Product.find(productScopeForAdmin(adminId))
     .populate('mainCategory')
     .populate('subCategory')
     .populate('thirdCategory')
@@ -841,7 +856,7 @@ const toggleProductFeatured = async (productId, adminId, featuredData) => {
     throw new Error('Product not found')
   }
 
-  if (existingProduct.addedBy.toString() !== adminId.toString()) {
+  if (!canAdminMutateProduct(existingProduct, adminId)) {
     throw new Error('Unauthorized access')
   }
 
@@ -867,7 +882,7 @@ const toggleProductTier = async (productId, adminId, tierData) => {
     throw new Error('Product not found')
   }
 
-  if (existingProduct.addedBy.toString() !== adminId.toString()) {
+  if (!canAdminMutateProduct(existingProduct, adminId)) {
     throw new Error('Unauthorized access')
   }
 
@@ -984,7 +999,9 @@ const addHeroBanner = async (bannerData, attribution = {}) => {
     'wedding_extra',
     'romantic_couple',
     'kids',
-    'occasion'
+    'occasion',
+    'birthday_level_up',
+    'birthday_extra_special'
   ]
   const placementVal =
     placement && allowedPlacements.includes(String(placement)) ? String(placement) : 'hero'
@@ -1034,7 +1051,7 @@ const getOrderForInvoice = async (orderId, adminId) => {
   if (!order) throw new Error('Order not found')
 
   // verify at least one item belongs to this admin
-  const adminProducts = await Product.find({ addedBy: adminId }).select('_id').lean()
+  const adminProducts = await Product.find(productScopeForAdmin(adminId)).select('_id').lean()
   const adminProductIds = adminProducts.map(p => p._id.toString())
   const hasAccess = order.items.some(i => i.product && adminProductIds.includes(i.product._id.toString()))
   if (!hasAccess) throw new Error('Unauthorized: this order does not contain your products')
@@ -1128,11 +1145,9 @@ const getAdminOrders = async (adminId, page = 1, limit = 10) => {
   const limitNum = Math.min(parseInt(limit) || 10, 50)
   const skip = (pageNum - 1) * limitNum
 
-  // get only this admin's product IDs
-  const adminProducts = await Product.find({ addedBy: adminId }).select('_id').lean()
+  const adminProducts = await Product.find(productScopeForAdmin(adminId)).select('_id').lean()
   const adminProductIds = adminProducts.map(p => p._id.toString())
 
-  // find orders that contain at least one of this admin's products
   const query = { 'items.product': { $in: adminProducts.map(p => p._id) } }
 
   const orders = await Order.find(query)
@@ -1184,7 +1199,7 @@ const getAdminOrderById = async (adminId, orderId) => {
   const Order = require('../models/order-model')
   const Product = require('../models/product-model')
 
-  const adminProducts = await Product.find({ addedBy: adminId }).select('_id').lean()
+  const adminProducts = await Product.find(productScopeForAdmin(adminId)).select('_id').lean()
   const adminProductIds = adminProducts.map(p => p._id.toString())
 
   const o = await Order.findById(orderId)
@@ -1340,7 +1355,7 @@ const getAdminAnalytics = async (adminId) => {
   const Product = require('../models/product-model')
   const User = require('../models/user-model')
 
-  const adminProducts = await Product.find({ addedBy: adminId }).select('_id name price')
+  const adminProducts = await Product.find(productScopeForAdmin(adminId)).select('_id name price')
   const adminProductIds = adminProducts.map(p => p._id)
   const query = { 'items.product': { $in: adminProductIds } }
 

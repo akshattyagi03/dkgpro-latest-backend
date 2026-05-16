@@ -146,9 +146,25 @@ const productSchema = new mongoose.Schema({
   tags: [{
     type: String,
     trim: true
-  }]
+  }],
+  /** Set only by catalog seed scripts; stripped from API JSON via toJSON. Used for idempotent cleanup. */
+  catalogSeed: {
+    type: Boolean,
+    default: false,
+    index: true
+  }
 }, {
   timestamps: true
 })
+
+const stripCatalogSeed = (_doc, ret) => {
+  if (ret && Object.prototype.hasOwnProperty.call(ret, 'catalogSeed')) {
+    delete ret.catalogSeed
+  }
+  return ret
+}
+
+productSchema.set('toJSON', { transform: stripCatalogSeed })
+productSchema.set('toObject', { transform: stripCatalogSeed })
 
 module.exports = mongoose.model('Product', productSchema)

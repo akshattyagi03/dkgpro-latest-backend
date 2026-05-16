@@ -1,7 +1,10 @@
 {
   "main": "server.js",
   "scripts": {
-    "dev": "npx nodemon server.js"
+    "dev": "npx nodemon server.js",
+    "seed:categories": "node fullCategorySeed.js",
+    "seed:dummy": "node dummyContentSeed.js",
+    "seed:all": "node fullCategorySeed.js && node dummyContentSeed.js"
   },
   "dependencies": {
     "aws-sdk": "^2.1692.0",

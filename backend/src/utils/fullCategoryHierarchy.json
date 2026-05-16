@@ -1,0 +1,302 @@
+[
+  {
+    "name": "Occasions",
+    "subs": [
+      {
+        "name": "ANNIVERSARY",
+        "items": [
+          "Candlelight Dinners",
+          "Private Movie & Dinner",
+          "Couple Spa",
+          "Rooftop Dining",
+          "Room Decorations",
+          "Canopy Setup",
+          "Photo Gifts",
+          "Cake Surprises",
+          "Balloon Decor",
+          "Love Hampers"
+        ]
+      },
+      {
+        "name": "BIRTHDAY",
+        "items": [
+          "Birthday Room Decor",
+          "Terrace Party Setup",
+          "Car Boot Surprise",
+          "Theme Decorations",
+          "Cakes",
+          "Balloon Surprises",
+          "DJ Party",
+          "Photo Booth",
+          "Gift Hampers",
+          "Live Music"
+        ]
+      },
+      {
+        "name": "KIDS CELEBRATIONS",
+        "items": [
+          "Cartoon Theme Decor",
+          "Superhero Decor",
+          "Unicorn Decor",
+          "Magic Show",
+          "Puppet Show",
+          "Balloon Decor",
+          "Theme Cakes",
+          "Game Activities",
+          "Character Entry",
+          "Art & Craft"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Gifts",
+    "subs": [
+      {
+        "name": "CAKES & BOUQUETS",
+        "items": [
+          "Photo Cakes",
+          "Designer Cakes",
+          "Heart Shape Cakes",
+          "Chocolate Cakes",
+          "Cupcakes",
+          "Flower Bouquets",
+          "Rose Bouquets",
+          "Cake Combos",
+          "Premium Cakes",
+          "Theme Cakes"
+        ]
+      },
+      {
+        "name": "PERSONALIZED GIFTS",
+        "items": [
+          "Photo Frames",
+          "Photo Lamps",
+          "Customized Mugs",
+          "Name Frames",
+          "Collages",
+          "Gift Combos",
+          "LED Frames",
+          "Memory Books",
+          "Scrapbooks",
+          "Engraved Gifts"
+        ]
+      },
+      {
+        "name": "DIGITAL GIFTS",
+        "items": [
+          "Video Message",
+          "E-Newspaper",
+          "Radio Show",
+          "Digital Mosaic",
+          "Celebrity Wishes",
+          "Voice Message",
+          "AI Video",
+          "Virtual Guitarist",
+          "Digital Card",
+          "WhatsApp Surprise"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Experiences",
+    "subs": [
+      {
+        "name": "DINING EXPERIENCES",
+        "items": [
+          "Private Candlelight Dinner",
+          "Rooftop Dining",
+          "Poolside Dining",
+          "Cabana Setup",
+          "Garden Dining",
+          "Indoor Dining",
+          "Outdoor Dining",
+          "Lakeside Dining",
+          "Beachside Dining",
+          "Lunch Specials"
+        ]
+      },
+      {
+        "name": "ROMANTIC EXPERIENCES",
+        "items": [
+          "Couple Spa",
+          "Love Room Setup",
+          "Surprise Planning",
+          "Proposal Setup",
+          "Dinner Date",
+          "Anniversary Surprise",
+          "Long Drive Setup",
+          "Romantic Stay",
+          "Private Movie",
+          "Couple Activities"
+        ]
+      },
+      {
+        "name": "STAYCATIONS",
+        "items": [
+          "Hotel Stay",
+          "Resort Stay",
+          "Luxury Stay",
+          "Pool Villa Stay",
+          "Weekend Getaway",
+          "Couple Stay",
+          "Honeymoon Stay",
+          "Budget Stay",
+          "Premium Stay",
+          "City Stay"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Decorations",
+    "subs": [
+      {
+        "name": "ROOM DECORATIONS",
+        "items": [
+          "Romantic Room Decor",
+          "Birthday Room Decor",
+          "Anniversary Room Decor",
+          "First Night Decor",
+          "Hotel Room Decor",
+          "Rose Petal Decor",
+          "LED Decor",
+          "Balloon Ceiling",
+          "Surprise Entry",
+          "Name Decor"
+        ]
+      },
+      {
+        "name": "BALLOON DECORATIONS",
+        "items": [
+          "Balloon Arch",
+          "Helium Balloons",
+          "Chrome Balloons",
+          "Balloon Wall",
+          "Balloon Ceiling",
+          "LED Balloons",
+          "Confetti Balloons",
+          "Theme Balloons",
+          "Balloon Bouquet",
+          "Entrance Decor"
+        ]
+      },
+      {
+        "name": "THEME DECORATIONS",
+        "items": [
+          "Kids Themes",
+          "Romantic Theme",
+          "Festival Theme",
+          "Bollywood Theme",
+          "Retro Theme",
+          "Minimal Theme",
+          "Luxury Theme",
+          "Pastel Theme",
+          "Cartoon Theme",
+          "Custom Theme"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Festivals",
+    "subs": [
+      {
+        "name": "DIWALI",
+        "items": [
+          "Diwali Decorations",
+          "Diwali Hampers",
+          "Lights Setup",
+          "Rangoli Setup",
+          "Puja Setup",
+          "Gift Hampers",
+          "Office Decor",
+          "Home Decor",
+          "Sweets Boxes",
+          "Premium Gifts"
+        ]
+      },
+      {
+        "name": "CHRISTMAS",
+        "items": [
+          "Christmas Tree",
+          "Christmas Decor",
+          "Santa Setup",
+          "Gift Hampers",
+          "Lighting Decor",
+          "Office Decor",
+          "Home Decor",
+          "Party Setup",
+          "Theme Decor",
+          "Cake Gifts"
+        ]
+      },
+      {
+        "name": "NEW YEAR",
+        "items": [
+          "New Year Party",
+          "Balloon Decor",
+          "DJ Party",
+          "Cake",
+          "Countdown Setup",
+          "Club Party",
+          "Home Party",
+          "Luxury Party",
+          "Theme Party",
+          "Fireworks Setup"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Corporate Events",
+    "subs": [
+      {
+        "name": "OFFICE DECORATIONS",
+        "items": [
+          "Desk Decor",
+          "Entrance Decor",
+          "Stage Decor",
+          "Branding Setup",
+          "Lighting Setup",
+          "Cabin Decor",
+          "Reception Decor",
+          "Event Decor",
+          "Festive Decor",
+          "Theme Decor"
+        ]
+      },
+      {
+        "name": "CORPORATE GIFTING",
+        "items": [
+          "Employee Kits",
+          "Joining Kits",
+          "Festive Gifts",
+          "Bulk Gifts",
+          "Premium Hampers",
+          "Customized Gifts",
+          "Client Gifts",
+          "Branding Gifts",
+          "Welcome Kits",
+          "Office Gifts"
+        ]
+      },
+      {
+        "name": "TEAM CELEBRATIONS",
+        "items": [
+          "Team Lunch",
+          "Team Dinner",
+          "Office Party",
+          "Offsite Event",
+          "Team Building",
+          "Annual Party",
+          "Award Ceremony",
+          "Workshop",
+          "Fun Activities",
+          "Celebration Events"
+        ]
+      }
+    ]
+  }
+]
