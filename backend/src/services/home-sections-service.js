@@ -1,5 +1,6 @@
 /**
- * Home page product rows (Option B) — merged defaults + optional DB overrides per slug.
+ * Home page product rows — merged defaults + optional DB overrides per slug.
+ * Resolve rules match real Main / Sub / Third category names in Mongo (slugified).
  */
 const mongoose = require('mongoose')
 
@@ -9,54 +10,58 @@ const DEFAULT_SECTIONS = [
     title: 'Balloon Ring Decoration',
     subtitle:
       'we are thrilled to offer a range of exceptional decoration services tailored to elevate your space.',
-    exploreHref: '/categories/decorations/birthday/balloon-ring',
+    exploreHref: '/categories/decorations/balloon-decorations',
     sortOrder: 10,
-    resolve: { kind: 'thirdByUrlSegment', segment: 'balloon-ring' }
+    resolve: { kind: 'subByUrlSegment', segment: 'balloon-decorations', mainSegment: 'decorations' }
   },
   {
     slug: 'wedding-decoration',
     title: 'Wedding Decoration',
     subtitle:
       'we are thrilled to offer a range of exceptional decoration services tailored to elevate your space.',
-    exploreHref: '/categories/decorations/wedding/wedding-decoration',
+    exploreHref: '/categories/decorations/theme-decorations',
     sortOrder: 20,
-    resolve: { kind: 'thirdByUrlSegment', segment: 'wedding-decoration' }
+    resolve: { kind: 'subByUrlSegment', segment: 'theme-decorations', mainSegment: 'decorations' }
   },
   {
     slug: 'bridal-entry-decoration',
     title: 'Bridal Entry Decoration',
     subtitle:
       'we are thrilled to offer a range of exceptional decoration services tailored to elevate your space.',
-    exploreHref: '/categories/decorations/bridal/bridal-entry-decoration',
+    exploreHref: '/categories/decorations/room-decorations',
     sortOrder: 30,
-    resolve: { kind: 'thirdByUrlSegment', segment: 'bridal-entry-decoration' }
+    resolve: { kind: 'subByUrlSegment', segment: 'room-decorations', mainSegment: 'decorations' }
   },
   {
     slug: 'bachelors-party-decoration',
     title: "Bachelor's Party Decoration",
     subtitle:
       'we are thrilled to offer a range of exceptional decoration services tailored to elevate your space.',
-    exploreHref: '/categories/decorations/parties/bachelors-party-decoration',
+    exploreHref: '/categories/occasions/birthday',
     sortOrder: 40,
-    resolve: { kind: 'thirdByUrlSegment', segment: 'bachelors-party-decoration' }
+    resolve: { kind: 'subByUrlSegment', segment: 'birthday', mainSegment: 'occasions' }
   },
   {
     slug: 'anniversary',
     title: 'Anniversary Decoration Surprises',
     subtitle:
       'we are thrilled to offer a range of exceptional decoration services tailored to elevate your space.',
-    exploreHref: '/categories/anniversary',
+    exploreHref: '/categories/occasions/anniversary',
     sortOrder: 50,
-    resolve: { kind: 'mainByUrlSegment', segment: 'anniversary' }
+    resolve: { kind: 'subByUrlSegment', segment: 'anniversary', mainSegment: 'occasions' }
   },
   {
     slug: 'rooftop-decoration',
     title: 'Rooftop Decoration At Home',
     subtitle:
       'we are thrilled to offer a range of exceptional decoration services tailored to elevate your space.',
-    exploreHref: '/categories/decorations/rooftop/rooftop-decoration',
+    exploreHref: '/categories/experiences/dining-experiences/rooftop-dining',
     sortOrder: 60,
-    resolve: { kind: 'thirdByUrlSegment', segment: 'rooftop-decoration' }
+    resolve: {
+      kind: 'thirdByUrlSegment',
+      segment: 'rooftop-dining',
+      fallback: { kind: 'subByUrlSegment', segment: 'dining-experiences', mainSegment: 'experiences' }
+    }
   }
 ]
 
@@ -64,6 +69,7 @@ function slugifyName(name) {
   return String(name || '')
     .trim()
     .toLowerCase()
+    .replace(/&/g, 'and')
     .replace(/[^a-z0-9]+/gi, '-')
     .replace(/^-|-$/g, '')
 }
@@ -101,14 +107,47 @@ async function findMainCategoryByUrlSegment(segment) {
   return null
 }
 
+async function findSubCategoryByUrlSegment(segment, mainSegment = null) {
+  const SubCategory = require('../models/sub-category-model')
+  const target = String(segment).toLowerCase()
+
+  let mainId = null
+  if (mainSegment) {
+    const mc = await findMainCategoryByUrlSegment(mainSegment)
+    if (!mc) return null
+    mainId = mc._id
+  }
+
+  const query = mainId ? { mainCategory: mainId } : {}
+  const subs = await SubCategory.find(query).select('name').lean()
+  for (const s of subs) {
+    if (slugifyName(s.name) === target) {
+      return SubCategory.findById(s._id)
+    }
+  }
+  return null
+}
+
 async function fetchProductsForResolve(resolve, limit = 4) {
   const Product = require('../models/product-model')
   if (!resolve || !resolve.kind) return []
 
   if (resolve.kind === 'thirdByUrlSegment') {
     const tc = await findThirdCategoryByUrlSegment(resolve.segment)
-    if (!tc) return []
+    if (!tc) {
+      if (resolve.fallback) return fetchProductsForResolve(resolve.fallback, limit)
+      return []
+    }
     const q = Product.find({ thirdCategory: tc._id })
+      .sort({ isFeatured: -1, createdAt: -1 })
+      .limit(limit)
+    return populateProductDeep(q).exec()
+  }
+
+  if (resolve.kind === 'subByUrlSegment') {
+    const sub = await findSubCategoryByUrlSegment(resolve.segment, resolve.mainSegment)
+    if (!sub) return []
+    const q = Product.find({ subCategory: sub._id })
       .sort({ isFeatured: -1, createdAt: -1 })
       .limit(limit)
     return populateProductDeep(q).exec()
@@ -130,7 +169,9 @@ async function fetchProductsByOrderedIds(ids) {
   const Product = require('../models/product-model')
   const unique = [...new Set(ids.map((id) => String(id)))].slice(0, 12)
   if (unique.length === 0) return []
-  const objectIds = unique.filter((id) => mongoose.Types.ObjectId.isValid(id)).map((id) => new mongoose.Types.ObjectId(id))
+  const objectIds = unique
+    .filter((id) => mongoose.Types.ObjectId.isValid(id))
+    .map((id) => new mongoose.Types.ObjectId(id))
   const docs = await populateProductDeep(Product.find({ _id: { $in: objectIds } })).exec()
   const map = new Map(docs.map((p) => [String(p._id), p]))
   return unique.map((id) => map.get(String(id))).filter(Boolean)

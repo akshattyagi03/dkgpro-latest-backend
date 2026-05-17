@@ -49,7 +49,10 @@ const heroBannerSchema = new mongoose.Schema({
       'kids',
       'occasion',
       'birthday_level_up',
-      'birthday_extra_special'
+      'birthday_extra_special',
+      'corporate_hero',
+      'corporate_gallery',
+      'corporate_gifting'
     ],
     default: 'hero'
   },

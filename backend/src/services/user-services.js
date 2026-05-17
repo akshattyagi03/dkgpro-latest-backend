@@ -564,6 +564,7 @@ const getPremiumProducts = async () => {
 }
 
 const getProductsByThirdCategory = async (categoryName, page = 1, limit = 10) => {
+  const { findCategoryByNameOrSlug } = require('../utils/categoryNameLookup')
   const Product = require('../models/product-model')
   const ThirdCategory = require('../models/third-category-model')
   const AdditionalCategory = require('../models/additional-category-model')
@@ -571,10 +572,11 @@ const getProductsByThirdCategory = async (categoryName, page = 1, limit = 10) =>
   const SubCategory = require('../models/sub-category-model')
   const Addon = require('../models/addon-model')
 
-  const thirdCategory = await ThirdCategory.findOne({ name: categoryName }).lean()
-  if (!thirdCategory) {
+  const thirdCategoryDoc = await findCategoryByNameOrSlug(ThirdCategory, categoryName)
+  if (!thirdCategoryDoc) {
     throw new Error(`Third category '${categoryName}' not found`)
   }
+  const thirdCategory = thirdCategoryDoc.toObject ? thirdCategoryDoc.toObject() : thirdCategoryDoc
 
   const pageNum = parseInt(page) || 1
   const limitNum = Math.min(parseInt(limit) || 10, 50)
@@ -636,7 +638,8 @@ const getFilteredProducts = async (filters) => {
   const query = {}
 
   if (category) {
-    const thirdCategory = await ThirdCategory.findOne({ name: category })
+    const { findCategoryByNameOrSlug } = require('../utils/categoryNameLookup')
+    const thirdCategory = await findCategoryByNameOrSlug(ThirdCategory, category)
     if (thirdCategory) {
       query.thirdCategory = thirdCategory._id
     }
@@ -1277,6 +1280,7 @@ const deleteVenueReview = async (userId, reviewId) => {
 }
 
 const getSubCategoryPage = async (subCategoryName) => {
+  const { findCategoryByNameOrSlug } = require('../utils/categoryNameLookup')
   const MainCategory = require('../models/main-category-model')
   const SubCategory = require('../models/sub-category-model')
   const ThirdCategory = require('../models/third-category-model')
@@ -1284,7 +1288,7 @@ const getSubCategoryPage = async (subCategoryName) => {
   const Product = require('../models/product-model')
   const AdditionalCategory = require('../models/additional-category-model')
   const AddOn = require('../models/addon-model')
-  const subCat = await SubCategory.findOne({ name: subCategoryName })
+  const subCat = await findCategoryByNameOrSlug(SubCategory, subCategoryName)
   if (!subCat) throw new Error(`Sub category '${subCategoryName}' not found`)
 
   const heroBanner = await HeroBanner.findOne({ subCategory: subCat._id, isActive: true })

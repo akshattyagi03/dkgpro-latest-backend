@@ -42,6 +42,7 @@ const {
   getPublishedBlogs,
   getBlogBySlug
 } = require('../services/user-services')
+const { getCorporatePage } = require('../services/corporate-page-service')
 const { HTTP_STATUS } = require('../utils/constants')
 
 const sendOTP = async (req, res) => {
@@ -504,6 +505,15 @@ const getSubCategoryPageController = async (req, res) => {
   }
 }
 
+const getCorporatePageController = async (req, res) => {
+  try {
+    const result = await getCorporatePage()
+    res.status(HTTP_STATUS.OK).json(result)
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -513,6 +523,7 @@ module.exports = {
   verifyPhoneLogin: verifyPhoneLoginController,
   login,
   home,
+  getCorporatePage: getCorporatePageController,
   featuredProducts,
   premiumProducts,
   getProductsByCategory: getProductsByCategoryController,

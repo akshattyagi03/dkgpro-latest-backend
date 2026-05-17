@@ -1001,7 +1001,10 @@ const addHeroBanner = async (bannerData, attribution = {}) => {
     'kids',
     'occasion',
     'birthday_level_up',
-    'birthday_extra_special'
+    'birthday_extra_special',
+    'corporate_hero',
+    'corporate_gallery',
+    'corporate_gifting'
   ]
   const placementVal =
     placement && allowedPlacements.includes(String(placement)) ? String(placement) : 'hero'

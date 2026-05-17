@@ -21,6 +21,7 @@ router.post('/reset-password', userController.verifyResetPassword)
 router.post('/login', userController.login)
 //home page with featured and/or premium products 
 router.get('/home', userController.home)
+router.get('/corporate-page', userController.getCorporatePage)
 //featured products 
 router.get('/featured', userController.featuredProducts)
 //premium products
