@@ -18,6 +18,8 @@ const {
   removeVenue,
   getAllAdmins,
   getAllInquiries,
+  getCorporateBookings,
+  updateCorporateBookingStatus,
   getAllBlogs,
   getBlogById,
   updateBlog,
@@ -265,6 +267,25 @@ const getInquiries = async (req, res) => {
   }
 }
 
+const getCorporateBookingsController = async (req, res) => {
+  try {
+    const bookings = await getCorporateBookings()
+    res.status(200).json({ bookings })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const updateCorporateBookingStatusController = async (req, res) => {
+  try {
+    const { status } = req.body
+    const booking = await updateCorporateBookingStatus(req.params.contactId, status)
+    res.status(200).json({ message: 'Status updated', booking })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 const getBlogs = async (req, res) => {
   try {
     const { page, limit, published, category, title } = req.query
@@ -499,6 +520,8 @@ module.exports = {
   deleteVenue,
   getAdmins,
   getInquiries,
+  getCorporateBookings: getCorporateBookingsController,
+  updateCorporateBookingStatus: updateCorporateBookingStatusController,
   logout,
   getBlogs,
   getBlogById: getBlogByIdView,

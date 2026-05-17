@@ -1003,6 +1003,7 @@ const addHeroBanner = async (bannerData, attribution = {}) => {
     'birthday_level_up',
     'birthday_extra_special',
     'corporate_hero',
+    'corporate_booking',
     'corporate_gallery',
     'corporate_gifting'
   ]
