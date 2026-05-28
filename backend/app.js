@@ -13,15 +13,27 @@ connectDB()
 startInterestDecayCron()
 
 // CORS Configuration
+const defaultOrigins = [
+  'http://localhost:5500',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:8080',
+  'http://127.0.0.1:5500',
+  'http://127.0.0.1:8080',
+  'https://dkgpro.in',
+  'https://www.dkgpro.in',
+]
+const envOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean)
+if (process.env.FRONTEND_URL) {
+  envOrigins.push(process.env.FRONTEND_URL.replace(/\/$/, ''))
+}
+const corsOrigins = [...new Set([...defaultOrigins, ...envOrigins])]
+
 const corsOptions = {
-  origin: [
-    'http://localhost:5500',
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:8080',
-    'http://127.0.0.1:5500',
-    'http://127.0.0.1:8080',
-  ],
+  origin: corsOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -45,6 +57,17 @@ app.use((req, res, next) => {
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())
+
+// dkg_guest browser: /api/proxy/users/... → /users/...
+// If nginx strips /api before proxy_pass, Express sees /proxy/users/... — handle both.
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api/proxy/') || req.url === '/api/proxy') {
+    req.url = req.url.replace(/^\/api\/proxy/, '') || '/'
+  } else if (req.url.startsWith('/proxy/') || req.url === '/proxy') {
+    req.url = req.url.replace(/^\/proxy/, '') || '/'
+  }
+  next()
+})
 app.set('view engine', 'ejs')
 app.set('views', './src/views')
 app.use(express.static('public'))
