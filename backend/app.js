@@ -57,17 +57,6 @@ app.use((req, res, next) => {
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())
-
-// dkg_guest browser: /api/proxy/users/... → /users/...
-// If nginx strips /api before proxy_pass, Express sees /proxy/users/... — handle both.
-app.use((req, res, next) => {
-  if (req.url.startsWith('/api/proxy/') || req.url === '/api/proxy') {
-    req.url = req.url.replace(/^\/api\/proxy/, '') || '/'
-  } else if (req.url.startsWith('/proxy/') || req.url === '/proxy') {
-    req.url = req.url.replace(/^\/proxy/, '') || '/'
-  }
-  next()
-})
 app.set('view engine', 'ejs')
 app.set('views', './src/views')
 app.use(express.static('public'))
