@@ -372,8 +372,8 @@ const trackInterestController = async (req, res) => {
 
 const getVenuesController = async (req, res) => {
   try {
-    const { page, limit, city } = req.query
-    const result = await getVenuesForUsers(page, limit, city)
+    const { page, limit, city, q } = req.query
+    const result = await getVenuesForUsers(page, limit, city, q)
     res.status(HTTP_STATUS.OK).json(result)
   } catch (error) {
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: error.message })
@@ -438,8 +438,8 @@ const submitContactController = async (req, res) => {
 
 const getPublishedBlogsController = async (req, res) => {
   try {
-    const { page, limit, category } = req.query
-    const result = await getPublishedBlogs(page, limit, category)
+    const { page, limit, category, city, q } = req.query
+    const result = await getPublishedBlogs(page, limit, category, city, q)
     res.status(HTTP_STATUS.OK).json(result)
   } catch (error) {
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: error.message })

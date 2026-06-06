@@ -12,6 +12,11 @@ const venueSchema = new mongoose.Schema({
       type: String,
       required: true
     },
+    /** Structured city label (e.g. Mumbai, Delhi NCR) — used for guest city filter */
+    city: {
+      type: String,
+      trim: true
+    },
     lat: Number,
     lng: Number
   },

@@ -1095,25 +1095,49 @@ const getBirthdayPackagesByCity = async () => {
   return results
 }
 
-const getVenuesForUsers = async (page = 1, limit = 10, city = '') => {
+const getVenuesForUsers = async (page = 1, limit = 10, city = '', q = '') => {
   const Venue = require('../models/venue-model')
   const pageNum = parseInt(page) || 1
   const limitNum = Math.min(parseInt(limit) || 10, 50)
   const skip = (pageNum - 1) * limitNum
 
-  // Venues store free-form `location.address`, so we apply the city filter
-  // as a case-insensitive regex on the address string. "Across India" /
-  // empty input yields no filter so every venue is returned.
   const buildVenueCityFilter = (raw) => {
     if (!raw || typeof raw !== 'string') return {}
     const trimmed = raw.trim()
     if (!trimmed) return {}
     if (/^across[\s-]*india$/i.test(trimmed)) return {}
     const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    return { 'location.address': { $regex: escaped, $options: 'i' } }
+    return {
+      $or: [
+        { 'location.city': { $regex: escaped, $options: 'i' } },
+        { 'location.address': { $regex: escaped, $options: 'i' } }
+      ]
+    }
   }
 
-  const filter = buildVenueCityFilter(city)
+  const buildVenueTextSearchCondition = (rawQ) => {
+    const text = typeof rawQ === 'string' ? rawQ.trim().slice(0, 200) : ''
+    if (!text) return null
+    const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return {
+      $or: [
+        { name: { $regex: escaped, $options: 'i' } },
+        { description: { $regex: escaped, $options: 'i' } },
+        { typesOfVenues: { $regex: escaped, $options: 'i' } },
+        { facilities: { $regex: escaped, $options: 'i' } },
+        { 'location.address': { $regex: escaped, $options: 'i' } },
+        { 'location.city': { $regex: escaped, $options: 'i' } }
+      ]
+    }
+  }
+
+  const parts = []
+  const cityFilter = buildVenueCityFilter(city)
+  if (Object.keys(cityFilter).length) parts.push(cityFilter)
+  const textCond = buildVenueTextSearchCondition(q)
+  if (textCond) parts.push(textCond)
+
+  const filter = parts.length === 0 ? {} : parts.length === 1 ? parts[0] : { $and: parts }
 
   const venues = await Venue.find(filter)
     .select('name description images typesOfVenues facilities startingPrice location createdAt')
@@ -1126,7 +1150,7 @@ const getVenuesForUsers = async (page = 1, limit = 10, city = '') => {
     venues,
     pagination: {
       currentPage: pageNum,
-      totalPages: Math.ceil(total / limitNum),
+      totalPages: Math.ceil(total / limitNum) || 1,
       totalVenues: total,
       hasNext: pageNum < Math.ceil(total / limitNum),
       hasPrev: pageNum > 1
@@ -1203,7 +1227,7 @@ const raiseInquiry = async (inquiryData) => {
   return inquiry
 }
 
-const getPublishedBlogs = async (page = 1, limit = 10, category) => {
+const getPublishedBlogs = async (page = 1, limit = 10, category, city = '', q = '') => {
   const Blog = require('../models/blog-model')
   const pageNum = parseInt(page) || 1
   const limitNum = Math.min(parseInt(limit) || 10, 50)
@@ -1212,20 +1236,56 @@ const getPublishedBlogs = async (page = 1, limit = 10, category) => {
   const query = { published: true }
   if (category) query.category = category
 
-  const blogs = await Blog.find(query)
+  const buildBlogCityFilter = (raw) => {
+    if (!raw || typeof raw !== 'string') return {}
+    const trimmed = raw.trim()
+    if (!trimmed || /^across[\s-]*india$/i.test(trimmed)) return {}
+    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return {
+      $or: [
+        { cities: { $exists: false } },
+        { cities: { $size: 0 } },
+        { cities: { $elemMatch: { $regex: escaped, $options: 'i' } } }
+      ]
+    }
+  }
+
+  const buildBlogTextSearchCondition = (rawQ) => {
+    const text = typeof rawQ === 'string' ? rawQ.trim().slice(0, 200) : ''
+    if (!text) return null
+    const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return {
+      $or: [
+        { title: { $regex: escaped, $options: 'i' } },
+        { excerpt: { $regex: escaped, $options: 'i' } },
+        { category: { $regex: escaped, $options: 'i' } },
+        { tags: { $regex: escaped, $options: 'i' } }
+      ]
+    }
+  }
+
+  const parts = [{ ...query }]
+  const cityFilter = buildBlogCityFilter(city)
+  if (Object.keys(cityFilter).length) parts.push(cityFilter)
+  const textCond = buildBlogTextSearchCondition(q)
+  if (textCond) parts.push(textCond)
+
+  const filter = parts.length === 1 ? query : { $and: parts }
+
+  const blogs = await Blog.find(filter)
     .select('-content')
     .populate('author', 'fullName')
     .sort({ publishedAt: -1 })
     .skip(skip)
     .limit(limitNum)
 
-  const total = await Blog.countDocuments(query)
+  const total = await Blog.countDocuments(filter)
 
   return {
     blogs,
     pagination: {
       currentPage: pageNum,
-      totalPages: Math.ceil(total / limitNum),
+      totalPages: Math.ceil(total / limitNum) || 1,
       totalBlogs: total,
       hasNext: pageNum < Math.ceil(total / limitNum),
       hasPrev: pageNum > 1

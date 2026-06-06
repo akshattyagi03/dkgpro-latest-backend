@@ -240,10 +240,28 @@ function normalizeBlogPublished (published) {
   return published === true || published === 'true'
 }
 
+function normalizeBlogCities (cities) {
+  if (cities == null) return []
+  if (Array.isArray(cities)) return cities.map((c) => String(c).trim()).filter(Boolean)
+  if (typeof cities === 'string') {
+    const s = cities.trim()
+    if (!s) return []
+    try {
+      const parsed = JSON.parse(s)
+      if (Array.isArray(parsed)) return parsed.map((c) => String(c).trim()).filter(Boolean)
+    } catch (_) {
+      /* comma-separated */
+    }
+    return s.split(',').map((c) => c.trim()).filter(Boolean)
+  }
+  return []
+}
+
 const createBlog = async (blogData, adminId) => {
   const Blog = require('../models/blog-model')
-  const { title, content, tags, published, image, excerpt, category, metaTitle, metaDescription } = blogData
+  const { title, content, tags, published, image, excerpt, category, metaTitle, metaDescription, cities } = blogData
   const tagsArr = normalizeBlogTags(tags)
+  const citiesArr = normalizeBlogCities(cities)
   const publishedFlag = normalizeBlogPublished(published)
 
   // auto-generate slug from title
@@ -264,6 +282,7 @@ const createBlog = async (blogData, adminId) => {
     author: adminId,
     category,
     tags: tagsArr,
+    cities: citiesArr,
     readingTime,
     metaTitle: metaTitle || title,
     metaDescription: metaDescription || excerpt,
@@ -618,6 +637,9 @@ const editBlog = async (blogId, adminId, updateDataRaw) => {
 
   if (Object.prototype.hasOwnProperty.call(updateData, 'tags')) {
     updateData.tags = normalizeBlogTags(updateData.tags)
+  }
+  if (Object.prototype.hasOwnProperty.call(updateData, 'cities')) {
+    updateData.cities = normalizeBlogCities(updateData.cities)
   }
   if (Object.prototype.hasOwnProperty.call(updateData, 'published')) {
     updateData.published = normalizeBlogPublished(updateData.published)
