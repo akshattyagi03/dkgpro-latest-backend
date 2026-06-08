@@ -21,7 +21,10 @@ const corsOptions = {
     'http://localhost:8080',
     'http://127.0.0.1:5500',
     'http://127.0.0.1:8080',
-  ],
+    'https://dkgpro.in',
+    'https://www.dkgpro.in',
+    process.env.FRONTEND_URL
+  ].filter(Boolean),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
