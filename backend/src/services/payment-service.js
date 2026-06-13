@@ -124,6 +124,14 @@ const createOrder = async (userId, orderData) => {
 const verifyPayment = async (paymentData) => {
   const { razorpayOrderId, razorpayPaymentId, razorpaySignature, orderMeta } = paymentData;
 
+  const existing = await Order.findOne({ razorpayOrderId });
+  if (existing) {
+    return {
+      message: 'Payment already verified.',
+      order: existing
+    };
+  }
+
   const body = razorpayOrderId + '|' + razorpayPaymentId;
   const expectedSignature = crypto
     .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
