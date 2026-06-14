@@ -3,7 +3,7 @@ const { HTTP_STATUS } = require('../utils/constants');
 
 const createOrderController = async (req, res) => {
   try {
-    const { totalAmount, shippingAddress, cartSnapshot } = req.body;
+    const { totalAmount, shippingAddress, cartSnapshot, timing } = req.body;
 
     if (!shippingAddress) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
@@ -17,7 +17,7 @@ const createOrderController = async (req, res) => {
       });
     }
 
-    const result = await createOrder(req.user._id, { totalAmount, shippingAddress, cartSnapshot });
+    const result = await createOrder(req.user._id, { totalAmount, shippingAddress, cartSnapshot, timing });
     res.status(HTTP_STATUS.OK).json(result);
   } catch (error) {
     const message = error.message || JSON.stringify(error) || 'Something went wrong';

@@ -32,7 +32,7 @@ function addonsSum(lines) {
 }
 
 const createOrder = async (userId, orderData) => {
-  const { totalAmount: clientTotalRaw, shippingAddress, cartSnapshot } = orderData;
+  const { totalAmount: clientTotalRaw, shippingAddress, cartSnapshot, timing } = orderData;
 
   if (!shippingAddress) {
     throw new Error('Shipping address is required');
@@ -116,7 +116,8 @@ const createOrder = async (userId, orderData) => {
       userId: userId.toString(),
       items: orderItems,
       totalAmount,
-      shippingAddress
+      shippingAddress,
+      timing
     }
   };
 };
@@ -138,7 +139,7 @@ const verifyPayment = async (paymentData) => {
     throw new Error('Order metadata missing');
   }
 
-  const { userId, items, totalAmount, shippingAddress } = orderMeta;
+  const { userId, items, totalAmount, shippingAddress, timing } = orderMeta;
 
   // only now save the order to DB after payment is verified
   const order = new Order({
@@ -146,6 +147,7 @@ const verifyPayment = async (paymentData) => {
     items,
     totalAmount,
     shippingAddress,
+    timing,
     razorpayOrderId,
     razorpayPaymentId,
     razorpaySignature,

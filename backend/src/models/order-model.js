@@ -51,6 +51,7 @@ const orderSchema = new mongoose.Schema({
     zipCode: String,
     country: String
   },
+  timing: String,
   razorpayOrderId: String,
   razorpayPaymentId: String,
   razorpaySignature: String
