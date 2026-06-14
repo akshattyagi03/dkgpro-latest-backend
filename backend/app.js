@@ -13,18 +13,27 @@ connectDB()
 startInterestDecayCron()
 
 // CORS Configuration
+const defaultOrigins = [
+  'http://localhost:5500',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:8080',
+  'http://127.0.0.1:5500',
+  'http://127.0.0.1:8080',
+  'https://dkgpro.in',
+  'https://www.dkgpro.in',
+]
+const envOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean)
+if (process.env.FRONTEND_URL) {
+  envOrigins.push(process.env.FRONTEND_URL.replace(/\/$/, ''))
+}
+const corsOrigins = [...new Set([...defaultOrigins, ...envOrigins])]
+
 const corsOptions = {
-  origin: [
-    'http://localhost:5500',
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:8080',
-    'http://127.0.0.1:5500',
-    'http://127.0.0.1:8080',
-    'https://dkgpro.in',
-    'https://www.dkgpro.in',
-    process.env.FRONTEND_URL
-  ].filter(Boolean),
+  origin: corsOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

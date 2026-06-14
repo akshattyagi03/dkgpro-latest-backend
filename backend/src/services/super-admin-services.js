@@ -552,6 +552,30 @@ const getAllInquiries = async () => {
   return await Inquiry.find().populate('venue').sort({ createdAt: -1 })
 }
 
+const CORPORATE_BOOKING_SERVICE_TYPE = 'Corporate Event Booking'
+
+const getCorporateBookings = async () => {
+  const Contact = require('../models/contact-model')
+  return Contact.find({ serviceType: CORPORATE_BOOKING_SERVICE_TYPE })
+    .sort({ createdAt: -1 })
+    .lean()
+}
+
+const updateCorporateBookingStatus = async (contactId, status) => {
+  const Contact = require('../models/contact-model')
+  const allowed = ['new', 'contacted', 'closed']
+  if (!allowed.includes(status)) {
+    throw new Error('Invalid status')
+  }
+  const contact = await Contact.findOneAndUpdate(
+    { _id: contactId, serviceType: CORPORATE_BOOKING_SERVICE_TYPE },
+    { status },
+    { new: true }
+  ).lean()
+  if (!contact) throw new Error('Corporate booking not found')
+  return contact
+}
+
 const getAllBlogs = async (page = 1, limit = 10, filters = {}) => {
   const Blog = require('../models/blog-model')
   const pageNum = parseInt(page) || 1
@@ -697,6 +721,8 @@ module.exports = {
   removeVenue,
   getAllAdmins,
   getAllInquiries,
+  getCorporateBookings,
+  updateCorporateBookingStatus,
   getAllBlogs,
   getBlogById,
   updateBlog,

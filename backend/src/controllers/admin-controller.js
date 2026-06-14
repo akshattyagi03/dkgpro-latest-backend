@@ -39,6 +39,10 @@ const {
 } = require('../services/admin-services')
 
 const { generateInvoicePDF } = require('../utils/email-service')
+const {
+  getCorporateBookings,
+  updateCorporateBookingStatus,
+} = require('../services/super-admin-services')
 
 const multerUpload = require('../../configuration/multer-config')
 
@@ -653,6 +657,25 @@ const sendInvoiceToCustomerController = async (req, res) => {
   }
 }
 
+const getCorporateBookingsController = async (req, res) => {
+  try {
+    const bookings = await getCorporateBookings()
+    res.status(200).json({ bookings })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const updateCorporateBookingStatusController = async (req, res) => {
+  try {
+    const { status } = req.body
+    const booking = await updateCorporateBookingStatus(req.params.contactId, status)
+    res.status(200).json({ message: 'Status updated', booking })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -694,5 +717,7 @@ module.exports = {
   removeBlog,
   logout,
   createAdditionalCategory,
-  addHeroBanner: addHeroBannerController
+  addHeroBanner: addHeroBannerController,
+  getCorporateBookings: getCorporateBookingsController,
+  updateCorporateBookingStatus: updateCorporateBookingStatusController,
 }

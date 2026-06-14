@@ -4,6 +4,7 @@
     "dev": "npx nodemon server.js",
     "seed:categories": "node fullCategorySeed.js",
     "seed:dummy": "node dummyContentSeed.js",
+    "seed:test-products": "node testProductsSeed.js",
     "seed:all": "node fullCategorySeed.js && node dummyContentSeed.js"
   },
   "dependencies": {

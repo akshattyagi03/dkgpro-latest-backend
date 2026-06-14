@@ -40,6 +40,11 @@ const blogSchema = new mongoose.Schema({
     trim: true,
     index: true
   }],
+  /** Guest city filter — empty = visible in all cities */
+  cities: [{
+    type: String,
+    trim: true
+  }],
   readingTime: {
     type: Number
   },

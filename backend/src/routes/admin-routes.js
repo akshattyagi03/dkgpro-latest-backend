@@ -72,6 +72,9 @@ router.get("/orders/:orderId", isAdmin, adminController.getOrderById)
 router.put("/orders/:orderId/status", isAdmin, adminController.updateOrderStatus)
 //get analytics
 router.get("/analytics", isAdmin, adminController.getAnalytics)
+// corporate event booking leads (from guest /corporate-events form)
+router.get("/corporate-bookings", isAdmin, adminController.getCorporateBookings)
+router.patch("/corporate-bookings/:contactId/status", isAdmin, adminController.updateCorporateBookingStatus)
 //logout admin
 router.get("/logout", isAdmin, adminController.logout)
 //create additional category 
