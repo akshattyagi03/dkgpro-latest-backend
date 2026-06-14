@@ -13,6 +13,7 @@ const {
   getPremiumProducts,
   getProductsByThirdCategory,
   getFilteredProducts,
+  getSearchSuggestions,
   getProductDetails,
   addToCart,
   removeFromCart,
@@ -42,7 +43,7 @@ const {
   getPublishedBlogs,
   getBlogBySlug
 } = require('../services/user-services')
-const { getCorporatePage } = require('../services/corporate-page-service')
+const { getCorporatePage, submitCorporateBooking } = require('../services/corporate-page-service')
 const { HTTP_STATUS } = require('../utils/constants')
 
 const sendOTP = async (req, res) => {
@@ -98,7 +99,8 @@ const login = async (req, res) => {
 
 const home = async (req, res) => {
   try {
-    const homeData = await getProducts()
+    const city = typeof req.query.city === 'string' ? req.query.city : ''
+    const homeData = await getProducts(city)
     res.status(HTTP_STATUS.OK).json(homeData)
   } catch (error) {
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: error.message })
@@ -195,8 +197,8 @@ const premiumProducts = async (req, res) => {
 const getProductsByCategoryController = async (req, res) => {
   try {
     const { categoryName } = req.params
-    const { page, limit } = req.query
-    const result = await getProductsByThirdCategory(categoryName, page, limit)
+    const { page, limit, city } = req.query
+    const result = await getProductsByThirdCategory(categoryName, page, limit, city)
     res.status(HTTP_STATUS.OK).json(result)
   } catch (error) {
     res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
@@ -206,6 +208,16 @@ const getProductsByCategoryController = async (req, res) => {
 const getFilteredProductsController = async (req, res) => {
   try {
     const result = await getFilteredProducts(req.query)
+    res.status(HTTP_STATUS.OK).json(result)
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
+const searchSuggestController = async (req, res) => {
+  try {
+    const { q, city, limit } = req.query
+    const result = await getSearchSuggestions(q, city, limit)
     res.status(HTTP_STATUS.OK).json(result)
   } catch (error) {
     res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
@@ -360,8 +372,8 @@ const trackInterestController = async (req, res) => {
 
 const getVenuesController = async (req, res) => {
   try {
-    const { page, limit } = req.query
-    const result = await getVenuesForUsers(page, limit)
+    const { page, limit, city, q } = req.query
+    const result = await getVenuesForUsers(page, limit, city, q)
     res.status(HTTP_STATUS.OK).json(result)
   } catch (error) {
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: error.message })
@@ -426,8 +438,8 @@ const submitContactController = async (req, res) => {
 
 const getPublishedBlogsController = async (req, res) => {
   try {
-    const { page, limit, category } = req.query
-    const result = await getPublishedBlogs(page, limit, category)
+    const { page, limit, category, city, q } = req.query
+    const result = await getPublishedBlogs(page, limit, category, city, q)
     res.status(HTTP_STATUS.OK).json(result)
   } catch (error) {
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: error.message })
@@ -446,8 +458,8 @@ const getBlogBySlugController = async (req, res) => {
 const getSimilarProductsController = async (req, res) => {
   try {
     const { productId } = req.params
-    const { limit } = req.query
-    const products = await getSimilarProducts(productId, limit)
+    const { limit, city } = req.query
+    const products = await getSimilarProducts(productId, limit, city)
     res.status(HTTP_STATUS.OK).json({ products })
   } catch (error) {
     res.status(HTTP_STATUS.NOT_FOUND).json({ message: error.message })
@@ -514,6 +526,18 @@ const getCorporatePageController = async (req, res) => {
   }
 }
 
+const submitCorporateBookingController = async (req, res) => {
+  try {
+    const contact = await submitCorporateBooking(req.body?.fields ?? req.body)
+    res.status(HTTP_STATUS.CREATED).json({
+      message: 'Booking request submitted successfully',
+      contact,
+    })
+  } catch (error) {
+    res.status(HTTP_STATUS.BAD_REQUEST).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -524,10 +548,12 @@ module.exports = {
   login,
   home,
   getCorporatePage: getCorporatePageController,
+  submitCorporateBooking: submitCorporateBookingController,
   featuredProducts,
   premiumProducts,
   getProductsByCategory: getProductsByCategoryController,
   getFilteredProducts: getFilteredProductsController,
+  searchSuggest: searchSuggestController,
   getProductDetails: getProductDetailsController,
   checkPincodeDistrict,
   getProductsByCity: getProductsByCityController,

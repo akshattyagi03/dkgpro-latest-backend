@@ -52,6 +52,9 @@ router.put("/edit-venue/:venueId", isSuperAdmin, wrapUpload(upload.array('images
 router.delete("/delete-venue/:venueId", isSuperAdmin, superAdminController.deleteVenue)
 //get all inquiries
 router.get("/inquiries", isSuperAdmin, superAdminController.getInquiries)
+//corporate event booking leads (from guest /corporate-events form)
+router.get("/corporate-bookings", isSuperAdmin, superAdminController.getCorporateBookings)
+router.patch("/corporate-bookings/:contactId/status", isSuperAdmin, superAdminController.updateCorporateBookingStatus)
 //orders (platform-wide, read-only list/detail)
 router.get("/orders", isSuperAdmin, superAdminController.getOrders)
 router.get("/orders/:orderId", isSuperAdmin, superAdminController.getOrderById)

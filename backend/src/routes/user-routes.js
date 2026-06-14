@@ -22,6 +22,7 @@ router.post('/login', userController.login)
 //home page with featured and/or premium products 
 router.get('/home', userController.home)
 router.get('/corporate-page', userController.getCorporatePage)
+router.post('/corporate-booking', userController.submitCorporateBooking)
 //featured products 
 router.get('/featured', userController.featuredProducts)
 //premium products
@@ -32,6 +33,7 @@ router.get('/category/:categoryName', userController.getProductsByCategory)
 router.get('/subcategory/:subCategory', userController.getSubCategoryPage)
 //filtered products with query parameters
 router.get('/filter', userController.getFilteredProducts)
+router.get('/search/suggest', userController.searchSuggest)
 //product details by ID
 router.get('/product/:productId', userController.getProductDetails)
 //similar products by third category and city

@@ -128,17 +128,28 @@ async function findSubCategoryByUrlSegment(segment, mainSegment = null) {
   return null
 }
 
-async function fetchProductsForResolve(resolve, limit = 4) {
+function buildCityFilterForSections(city) {
+  if (!city || typeof city !== 'string') return {}
+  const trimmed = city.trim()
+  if (!trimmed) return {}
+  if (/^across[\s-]*india$/i.test(trimmed)) return {}
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return { 'serviceableAreas.city': { $regex: escaped, $options: 'i' } }
+}
+
+async function fetchProductsForResolve(resolve, limit = 4, city = '') {
   const Product = require('../models/product-model')
   if (!resolve || !resolve.kind) return []
+
+  const cityFilter = buildCityFilterForSections(city)
 
   if (resolve.kind === 'thirdByUrlSegment') {
     const tc = await findThirdCategoryByUrlSegment(resolve.segment)
     if (!tc) {
-      if (resolve.fallback) return fetchProductsForResolve(resolve.fallback, limit)
+      if (resolve.fallback) return fetchProductsForResolve(resolve.fallback, limit, city)
       return []
     }
-    const q = Product.find({ thirdCategory: tc._id })
+    const q = Product.find({ thirdCategory: tc._id, ...cityFilter })
       .sort({ isFeatured: -1, createdAt: -1 })
       .limit(limit)
     return populateProductDeep(q).exec()
@@ -147,7 +158,7 @@ async function fetchProductsForResolve(resolve, limit = 4) {
   if (resolve.kind === 'subByUrlSegment') {
     const sub = await findSubCategoryByUrlSegment(resolve.segment, resolve.mainSegment)
     if (!sub) return []
-    const q = Product.find({ subCategory: sub._id })
+    const q = Product.find({ subCategory: sub._id, ...cityFilter })
       .sort({ isFeatured: -1, createdAt: -1 })
       .limit(limit)
     return populateProductDeep(q).exec()
@@ -156,7 +167,7 @@ async function fetchProductsForResolve(resolve, limit = 4) {
   if (resolve.kind === 'mainByUrlSegment') {
     const mc = await findMainCategoryByUrlSegment(resolve.segment)
     if (!mc) return []
-    const q = Product.find({ mainCategory: mc._id })
+    const q = Product.find({ mainCategory: mc._id, ...cityFilter })
       .sort({ isFeatured: -1, createdAt: -1 })
       .limit(limit)
     return populateProductDeep(q).exec()
@@ -165,14 +176,17 @@ async function fetchProductsForResolve(resolve, limit = 4) {
   return []
 }
 
-async function fetchProductsByOrderedIds(ids) {
+async function fetchProductsByOrderedIds(ids, city = '') {
   const Product = require('../models/product-model')
   const unique = [...new Set(ids.map((id) => String(id)))].slice(0, 12)
   if (unique.length === 0) return []
   const objectIds = unique
     .filter((id) => mongoose.Types.ObjectId.isValid(id))
     .map((id) => new mongoose.Types.ObjectId(id))
-  const docs = await populateProductDeep(Product.find({ _id: { $in: objectIds } })).exec()
+  const cityFilter = buildCityFilterForSections(city)
+  const docs = await populateProductDeep(
+    Product.find({ _id: { $in: objectIds }, ...cityFilter })
+  ).exec()
   const map = new Map(docs.map((p) => [String(p._id), p]))
   return unique.map((id) => map.get(String(id))).filter(Boolean)
 }
@@ -180,7 +194,7 @@ async function fetchProductsByOrderedIds(ids) {
 /**
  * @returns {Promise<Array<{ slug: string, title: string, subtitle: string, exploreHref: string, sortOrder: number, products: object[] }>>}
  */
-async function getMergedHomeProductSections() {
+async function getMergedHomeProductSections(city = '') {
   const HomeProductSection = require('../models/home-product-section-model')
 
   let dbRows = []
@@ -204,9 +218,9 @@ async function getMergedHomeProductSections() {
 
     let products = []
     if (row && Array.isArray(row.productIds) && row.productIds.length > 0) {
-      products = await fetchProductsByOrderedIds(row.productIds)
+      products = await fetchProductsByOrderedIds(row.productIds, city)
     } else {
-      products = await fetchProductsForResolve(def.resolve, 4)
+      products = await fetchProductsForResolve(def.resolve, 4, city)
     }
 
     out.push({

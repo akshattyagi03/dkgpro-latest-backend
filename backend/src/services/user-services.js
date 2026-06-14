@@ -220,7 +220,36 @@ const getProfileService = async (userId) => {
   };
 };
 
-const getProducts = async () => {
+/**
+ * Build a Mongo filter that matches a product whose `serviceableAreas.city`
+ * includes the given city. Returns `{}` when city is empty/"across-india"
+ * so callers can spread the result unconditionally.
+ */
+const buildCityFilter = (city) => {
+  if (!city || typeof city !== 'string') return {}
+  const trimmed = city.trim()
+  if (!trimmed) return {}
+  if (/^across[\s-]*india$/i.test(trimmed)) return {}
+  // Escape regex specials for safe partial match (e.g. "Delhi NCR")
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return { 'serviceableAreas.city': { $regex: escaped, $options: 'i' } }
+}
+
+/** Safe partial text match on product name / description / tags (no user-controlled regex operators). */
+const buildProductTextSearchCondition = (rawQ) => {
+  const q = typeof rawQ === 'string' ? rawQ.trim().slice(0, 200) : ''
+  if (!q) return null
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return {
+    $or: [
+      { name: { $regex: escaped, $options: 'i' } },
+      { description: { $regex: escaped, $options: 'i' } },
+      { tags: { $regex: escaped, $options: 'i' } }
+    ]
+  }
+}
+
+const getProducts = async (city = '') => {
   const Product = require('../models/product-model')
   const MainCategory = require('../models/main-category-model')
   const SubCategory = require('../models/sub-category-model')
@@ -229,7 +258,9 @@ const getProducts = async () => {
   const Addon = require('../models/addon-model')
   const HeroBanner = require('../models/hero-banner-model')
 
-  const featuredProducts = await Product.find({ isFeatured: true })
+  const cityFilter = buildCityFilter(city)
+
+  const featuredProducts = await Product.find({ isFeatured: true, ...cityFilter })
     .limit(6)
     .sort({ createdAt: -1 })
     .populate('mainCategory')
@@ -245,7 +276,8 @@ const getProducts = async () => {
 
   const premiumProducts = await Product.find({
     tier: 'premium',
-    _id: { $nin: featuredIds }
+    _id: { $nin: featuredIds },
+    ...cityFilter
   })
     .limit(6)
     .sort({ isFeatured: -1, createdAt: -1 })
@@ -261,7 +293,7 @@ const getProducts = async () => {
   const premiumIds = premiumProducts.map(p => p._id)
   const excludeIds = [...featuredIds, ...premiumIds]
 
-  const allProducts = await Product.find({ _id: { $nin: excludeIds } })
+  const allProducts = await Product.find({ _id: { $nin: excludeIds }, ...cityFilter })
     .limit(12)
     .sort({ isFeatured: -1, createdAt: -1 })
     .populate('mainCategory')
@@ -298,7 +330,7 @@ const getProducts = async () => {
 
   let homeProductSections = []
   try {
-    homeProductSections = await getMergedHomeProductSections()
+    homeProductSections = await getMergedHomeProductSections(city)
   } catch (e) {
     console.error('getMergedHomeProductSections:', e.message)
     homeProductSections = []
@@ -563,7 +595,7 @@ const getPremiumProducts = async () => {
   return products
 }
 
-const getProductsByThirdCategory = async (categoryName, page = 1, limit = 10) => {
+const getProductsByThirdCategory = async (categoryName, page = 1, limit = 10, city = '') => {
   const { findCategoryByNameOrSlug } = require('../utils/categoryNameLookup')
   const Product = require('../models/product-model')
   const ThirdCategory = require('../models/third-category-model')
@@ -590,7 +622,7 @@ const getProductsByThirdCategory = async (categoryName, page = 1, limit = 10) =>
     .populate({ path: 'customizationSections.addons.addon' })
     .populate('addedBy')
 
-  const baseQuery = { thirdCategory: thirdCategory._id }
+  const baseQuery = { thirdCategory: thirdCategory._id, ...buildCityFilter(city) }
 
   const [featuredAndPremium, featuredOnly, premiumOnly, standard] = await Promise.all([
     populate(Product.find({ ...baseQuery, isFeatured: true, tier: 'premium' }).sort({ createdAt: -1 })),
@@ -633,7 +665,7 @@ const getFilteredProducts = async (filters) => {
   const Product = require('../models/product-model')
   const ThirdCategory = require('../models/third-category-model')
 
-  const { category, tier, minPrice, maxPrice, city, page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc' } = filters
+  const { category, tier, minPrice, maxPrice, city, page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc', q } = filters
 
   const query = {}
 
@@ -645,6 +677,14 @@ const getFilteredProducts = async (filters) => {
     }
   }
 
+  const textCond = buildProductTextSearchCondition(q)
+  if (textCond) {
+    query.$or = textCond.$or
+  }
+
+  const qNormalized =
+    typeof q === 'string' && textCond ? q.trim().slice(0, 200) : undefined
+
   if (tier && ['standard', 'premium'].includes(tier)) {
     query.tier = tier
   }
@@ -655,9 +695,7 @@ const getFilteredProducts = async (filters) => {
     if (maxPrice) query.price.$lte = parseInt(maxPrice)
   }
 
-  if (city) {
-    query['serviceableAreas.city'] = { $regex: city, $options: 'i' }
-  }
+  Object.assign(query, buildCityFilter(city))
 
   const pageNum = parseInt(page) || 1
   const limitNum = Math.min(parseInt(limit) || 10, 50)
@@ -690,6 +728,7 @@ const getFilteredProducts = async (filters) => {
     products,
     filters: {
       category,
+      q: qNormalized,
       tier,
       minPrice,
       maxPrice,
@@ -704,6 +743,37 @@ const getFilteredProducts = async (filters) => {
       hasNext: pageNum < Math.ceil(total / limitNum),
       hasPrev: pageNum > 1
     }
+  }
+}
+
+/**
+ * Typeahead suggestions for header search — lightweight fields only.
+ */
+const getSearchSuggestions = async (rawQ, city, limit = 8) => {
+  const Product = require('../models/product-model')
+  const q = typeof rawQ === 'string' ? rawQ.trim().slice(0, 120) : ''
+  if (q.length < 2) return { suggestions: [] }
+
+  const textCond = buildProductTextSearchCondition(q)
+  if (!textCond) return { suggestions: [] }
+
+  const lim = Math.min(Math.max(parseInt(limit, 10) || 8, 1), 15)
+  const base = { ...buildCityFilter(city), ...textCond }
+
+  const rows = await Product.find(base)
+    .select('name images price discountedPrice _id')
+    .sort({ isFeatured: -1, createdAt: -1 })
+    .limit(lim)
+    .lean()
+
+  return {
+    suggestions: rows.map((p) => ({
+      id: String(p._id),
+      title: p.name,
+      image: Array.isArray(p.images) && p.images[0] ? p.images[0] : null,
+      price: p.discountedPrice != null ? p.discountedPrice : p.price,
+      href: `/product/${p._id}`
+    }))
   }
 }
 
@@ -1025,24 +1095,62 @@ const getBirthdayPackagesByCity = async () => {
   return results
 }
 
-const getVenuesForUsers = async (page = 1, limit = 10) => {
+const getVenuesForUsers = async (page = 1, limit = 10, city = '', q = '') => {
   const Venue = require('../models/venue-model')
   const pageNum = parseInt(page) || 1
   const limitNum = Math.min(parseInt(limit) || 10, 50)
   const skip = (pageNum - 1) * limitNum
 
-  const venues = await Venue.find()
+  const buildVenueCityFilter = (raw) => {
+    if (!raw || typeof raw !== 'string') return {}
+    const trimmed = raw.trim()
+    if (!trimmed) return {}
+    if (/^across[\s-]*india$/i.test(trimmed)) return {}
+    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return {
+      $or: [
+        { 'location.city': { $regex: escaped, $options: 'i' } },
+        { 'location.address': { $regex: escaped, $options: 'i' } }
+      ]
+    }
+  }
+
+  const buildVenueTextSearchCondition = (rawQ) => {
+    const text = typeof rawQ === 'string' ? rawQ.trim().slice(0, 200) : ''
+    if (!text) return null
+    const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return {
+      $or: [
+        { name: { $regex: escaped, $options: 'i' } },
+        { description: { $regex: escaped, $options: 'i' } },
+        { typesOfVenues: { $regex: escaped, $options: 'i' } },
+        { facilities: { $regex: escaped, $options: 'i' } },
+        { 'location.address': { $regex: escaped, $options: 'i' } },
+        { 'location.city': { $regex: escaped, $options: 'i' } }
+      ]
+    }
+  }
+
+  const parts = []
+  const cityFilter = buildVenueCityFilter(city)
+  if (Object.keys(cityFilter).length) parts.push(cityFilter)
+  const textCond = buildVenueTextSearchCondition(q)
+  if (textCond) parts.push(textCond)
+
+  const filter = parts.length === 0 ? {} : parts.length === 1 ? parts[0] : { $and: parts }
+
+  const venues = await Venue.find(filter)
     .select('name description images typesOfVenues facilities startingPrice location createdAt')
     .skip(skip)
     .limit(limitNum)
     .sort({ createdAt: -1 })
-  const total = await Venue.countDocuments()
+  const total = await Venue.countDocuments(filter)
 
   return {
     venues,
     pagination: {
       currentPage: pageNum,
-      totalPages: Math.ceil(total / limitNum),
+      totalPages: Math.ceil(total / limitNum) || 1,
       totalVenues: total,
       hasNext: pageNum < Math.ceil(total / limitNum),
       hasPrev: pageNum > 1
@@ -1119,7 +1227,7 @@ const raiseInquiry = async (inquiryData) => {
   return inquiry
 }
 
-const getPublishedBlogs = async (page = 1, limit = 10, category) => {
+const getPublishedBlogs = async (page = 1, limit = 10, category, city = '', q = '') => {
   const Blog = require('../models/blog-model')
   const pageNum = parseInt(page) || 1
   const limitNum = Math.min(parseInt(limit) || 10, 50)
@@ -1128,20 +1236,56 @@ const getPublishedBlogs = async (page = 1, limit = 10, category) => {
   const query = { published: true }
   if (category) query.category = category
 
-  const blogs = await Blog.find(query)
+  const buildBlogCityFilter = (raw) => {
+    if (!raw || typeof raw !== 'string') return {}
+    const trimmed = raw.trim()
+    if (!trimmed || /^across[\s-]*india$/i.test(trimmed)) return {}
+    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return {
+      $or: [
+        { cities: { $exists: false } },
+        { cities: { $size: 0 } },
+        { cities: { $elemMatch: { $regex: escaped, $options: 'i' } } }
+      ]
+    }
+  }
+
+  const buildBlogTextSearchCondition = (rawQ) => {
+    const text = typeof rawQ === 'string' ? rawQ.trim().slice(0, 200) : ''
+    if (!text) return null
+    const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return {
+      $or: [
+        { title: { $regex: escaped, $options: 'i' } },
+        { excerpt: { $regex: escaped, $options: 'i' } },
+        { category: { $regex: escaped, $options: 'i' } },
+        { tags: { $regex: escaped, $options: 'i' } }
+      ]
+    }
+  }
+
+  const parts = [{ ...query }]
+  const cityFilter = buildBlogCityFilter(city)
+  if (Object.keys(cityFilter).length) parts.push(cityFilter)
+  const textCond = buildBlogTextSearchCondition(q)
+  if (textCond) parts.push(textCond)
+
+  const filter = parts.length === 1 ? query : { $and: parts }
+
+  const blogs = await Blog.find(filter)
     .select('-content')
     .populate('author', 'fullName')
     .sort({ publishedAt: -1 })
     .skip(skip)
     .limit(limitNum)
 
-  const total = await Blog.countDocuments(query)
+  const total = await Blog.countDocuments(filter)
 
   return {
     blogs,
     pagination: {
       currentPage: pageNum,
-      totalPages: Math.ceil(total / limitNum),
+      totalPages: Math.ceil(total / limitNum) || 1,
       totalBlogs: total,
       hasNext: pageNum < Math.ceil(total / limitNum),
       hasPrev: pageNum > 1
@@ -1177,7 +1321,7 @@ const submitContact = async (contactData) => {
   return contact
 }
 
-const getSimilarProducts = async (productId, limit = 8) => {
+const getSimilarProducts = async (productId, limit = 8, city = '') => {
   const Product = require('../models/product-model')
   const mainCategory = require("../models/main-category-model")
   const SubCategory = require('../models/sub-category-model')
@@ -1193,7 +1337,14 @@ const getSimilarProducts = async (productId, limit = 8) => {
     _id: { $ne: product._id },
     thirdCategory: product.thirdCategory,
   }
-  if (cities.length > 0) {
+
+  // When the visitor has explicitly chosen a city, restrict the similar list
+  // to products that serve that city; otherwise keep the legacy behaviour
+  // of matching any city the source product itself serves.
+  const userCityFilter = buildCityFilter(city)
+  if (userCityFilter['serviceableAreas.city']) {
+    similarQuery['serviceableAreas.city'] = userCityFilter['serviceableAreas.city']
+  } else if (cities.length > 0) {
     similarQuery['serviceableAreas.city'] = { $in: cities }
   }
 
@@ -1328,5 +1479,5 @@ const getSubCategoryPage = async (subCategoryName) => {
   }
 }
 
-module.exports = {getProfileService, sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getProductDetails, syncCheckoutCart, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, submitContact, getVenuesForUsers, getVenueDetails, createReview, createVenueReview, editReview, deleteReview, editVenueReview, deleteVenueReview, getSimilarProducts, getPublishedBlogs, getBlogBySlug, getSubCategoryPage }
+module.exports = {getProfileService, sendUserOTP, verifyUserOTP, sendPasswordResetOTP, resetPassword, sendPhoneOTP, verifyPhoneLogin, loginUser, getProducts, getFeaturedProducts, getPremiumProducts, getProductsByThirdCategory, getFilteredProducts, getSearchSuggestions, getProductDetails, syncCheckoutCart, addToCart, removeFromCart, getCart, getWishlist, addToWishlist, removeFromWishlist, checkPincode, getProductsByCity, refreshAccessToken, logoutUser, getBirthdayPackagesByCity, getAllMainCategories, trackProductInterest, raiseInquiry, submitContact, getVenuesForUsers, getVenueDetails, createReview, createVenueReview, editReview, deleteReview, editVenueReview, deleteVenueReview, getSimilarProducts, getPublishedBlogs, getBlogBySlug, getSubCategoryPage }
 

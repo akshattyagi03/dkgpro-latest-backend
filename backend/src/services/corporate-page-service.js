@@ -5,15 +5,9 @@ const HeroBanner = require('../models/hero-banner-model')
 const {
   CORPORATE_MAIN_CATEGORY_NAME,
   DEFAULT_HERO,
+  DEFAULT_BOOKING,
   DEFAULT_STATS,
-  CELEBRATE_IMAGE_POOL,
-  GALLERY_IMAGE_POOL,
-  GALLERY_FILTERS,
-  GALLERY_IMAGES_BY_FILTER,
-  GALLERY_BENTO_SLOTS,
-  MAX_CELEBRATE_CARDS,
   slugifyName,
-  pickImage,
 } = require('../utils/corporatePageConfig')
 
 function resolveImageUrl(raw) {
@@ -57,141 +51,192 @@ function bannerHref(banner, mainSlug) {
 async function buildCelebrateCards(mainDoc) {
   const mainSlug = slugifyName(mainDoc.name)
   const subs = await SubCategory.find({ mainCategory: mainDoc._id }).sort({ name: 1 }).lean()
-  const items = []
+  if (!subs.length) return []
 
-  for (const sub of subs) {
-    if (items.length >= MAX_CELEBRATE_CARDS) break
-    const subSlug = slugifyName(sub.name)
-    items.push({
-      id: String(sub._id),
-      name: sub.name,
-      image: resolveImageUrl(sub.bannerImage) || pickImage(CELEBRATE_IMAGE_POOL, sub.name),
-      href: `/categories/${mainSlug}/${subSlug}`,
-      kind: 'sub',
-    })
+  const subById = Object.fromEntries(subs.map((s) => [String(s._id), s]))
+  const subIds = subs.map((s) => s._id)
+  const thirds = await ThirdCategory.find({ subCategory: { $in: subIds } })
+    .sort({ name: 1 })
+    .lean()
+
+  return thirds.map((third) => {
+    const sub = subById[String(third.subCategory)]
+    const subSlug = sub ? slugifyName(sub.name) : ''
+    const image = resolveImageUrl(third.bannerImage)
+    return {
+      id: String(third._id),
+      name: third.name,
+      image: image || null,
+      href: `/categories/${mainSlug}/${subSlug}/${slugifyName(third.name)}`,
+      kind: 'third',
+    }
+  })
+}
+
+/**
+ * Gallery tabs = sub-categories under Corporate Events.
+ * Each tab's tiles = third-categories (banner images from admin).
+ */
+async function buildGallery(mainDoc, mainSlug) {
+  const subs = await SubCategory.find({ mainCategory: mainDoc._id }).sort({ name: 1 }).lean()
+  if (!subs.length) {
+    return { heading: 'Our Gallery', tabs: [] }
   }
 
-  for (const sub of subs) {
-    if (items.length >= MAX_CELEBRATE_CARDS) break
-    const thirds = await ThirdCategory.find({ subCategory: sub._id }).sort({ name: 1 }).lean()
-    const subSlug = slugifyName(sub.name)
-    for (const third of thirds) {
-      if (items.length >= MAX_CELEBRATE_CARDS) break
-      items.push({
+  const subIds = subs.map((s) => s._id)
+  const thirds = await ThirdCategory.find({ subCategory: { $in: subIds } })
+    .sort({ name: 1 })
+    .lean()
+
+  const thirdsBySubId = new Map()
+  for (const third of thirds) {
+    const key = String(third.subCategory)
+    if (!thirdsBySubId.has(key)) thirdsBySubId.set(key, [])
+    thirdsBySubId.get(key).push(third)
+  }
+
+  const tabs = subs
+    .map((sub) => {
+      const subSlug = slugifyName(sub.name)
+      const subThirds = thirdsBySubId.get(String(sub._id)) || []
+      const items = subThirds.map((third) => ({
         id: String(third._id),
         name: third.name,
-        image: resolveImageUrl(third.bannerImage) || pickImage(CELEBRATE_IMAGE_POOL, third.name),
+        image: resolveImageUrl(third.bannerImage),
         href: `/categories/${mainSlug}/${subSlug}/${slugifyName(third.name)}`,
-        kind: 'third',
-      })
-    }
-  }
+      }))
 
-  return items
-}
-
-function matchGalleryFilter(title) {
-  if (!title) return null
-  const t = String(title).trim()
-  return GALLERY_FILTERS.find((f) => f.toLowerCase() === t.toLowerCase()) || null
-}
-
-async function buildGallery(mainDoc, mainSlug) {
-  const items = []
-  const cmsByFilter = Object.fromEntries(GALLERY_FILTERS.map((f) => [f, []]))
-
-  const banners = await bannersForPlacement('corporate_gallery')
-  for (const b of banners) {
-    const filter = matchGalleryFilter(b.title) || GALLERY_FILTERS[0]
-    const resolved = resolveImageUrl(b.image)
-    if (!isUsableGalleryUrl(resolved)) continue
-    cmsByFilter[filter].push({
-      id: String(b._id),
-      image: resolved,
-      label: b.title || filter,
-      filter,
-      tags: [filter],
-      href: bannerHref(b, mainSlug),
+      return {
+        id: String(sub._id),
+        slug: subSlug,
+        name: sub.name,
+        items,
+      }
     })
-  }
+    .filter((tab) => tab.items.length > 0)
 
-  for (const filter of GALLERY_FILTERS) {
-    const urls = GALLERY_IMAGES_BY_FILTER[filter] || GALLERY_IMAGE_POOL
-    const cms = cmsByFilter[filter] || []
-    for (let slot = 0; slot < GALLERY_BENTO_SLOTS; slot++) {
-      const cmsItem = cms[slot]
-      const fallbackUrl = urls[slot % urls.length]
-      const cmsUrl = cmsItem && isUsableGalleryUrl(cmsItem.image) ? cmsItem.image : null
-      items.push({
-        id: cmsItem?.id || `gallery-${slugifyName(filter)}-${slot}`,
-        image: cmsUrl || fallbackUrl,
-        label: cmsItem?.label || filter,
-        filter,
-        tags: [filter],
-        href: cmsItem?.href || `/categories/${mainSlug}`,
-      })
+  return { heading: 'Our Gallery', tabs }
+}
+
+/** Hero = active CMS banner with placement `corporate_hero` only (no stock image fallback). */
+async function buildHero() {
+  const banners = await bannersForPlacement('corporate_hero')
+  const banner = banners[0]
+  if (!banner) {
+    return {
+      title: DEFAULT_HERO.title,
+      subtitle: DEFAULT_HERO.subtitle,
+      image: null,
     }
   }
 
-  return items
+  const image = resolveImageUrl(banner.image)
+  return {
+    title: banner.title?.trim() || DEFAULT_HERO.title,
+    subtitle: DEFAULT_HERO.subtitle,
+    image: isUsableGalleryUrl(image) ? image : null,
+  }
 }
 
+/**
+ * Gifting carousel = all third-level categories under "Corporate Gifting".
+ * image is null when no banner — guest shows a name placeholder card (same as category pages).
+ */
 async function buildGifting(mainDoc, mainSlug) {
-  const items = []
-  const seen = new Set()
+  const giftingSub = await SubCategory.findOne({
+    mainCategory: mainDoc._id,
+    name: { $regex: /^corporate\s*gifting$/i },
+  }).lean()
 
-  const pushItem = (entry) => {
-    if (!entry?.id || seen.has(entry.id)) return
-    seen.add(entry.id)
-    items.push(entry)
-  }
+  if (!giftingSub) return []
 
-  const banners = await bannersForPlacement('corporate_gifting')
-  for (const b of banners) {
-    const resolved = resolveImageUrl(b.image)
-    pushItem({
-      id: String(b._id),
-      image: isUsableGalleryUrl(resolved) ? resolved : pickImage(CELEBRATE_IMAGE_POOL, b._id),
-      title: b.title || b.thirdCategory?.name || 'Corporate gifting',
-      href: bannerHref(b, mainSlug),
-    })
-  }
+  const subSlug = slugifyName(giftingSub.name)
+  const thirds = await ThirdCategory.find({ subCategory: giftingSub._id })
+    .sort({ name: 1 })
+    .lean()
 
-  const subs = await SubCategory.find({ mainCategory: mainDoc._id }).sort({ name: 1 }).lean()
-  for (const sub of subs) {
-    const subSlug = slugifyName(sub.name)
-    const subImg = resolveImageUrl(sub.bannerImage)
-    pushItem({
-      id: `sub-${sub._id}`,
-      image: isUsableGalleryUrl(subImg) ? subImg : pickImage(CELEBRATE_IMAGE_POOL, sub.name),
-      title: sub.name,
-      href: `/categories/${mainSlug}/${subSlug}`,
-    })
-
-    const thirds = await ThirdCategory.find({ subCategory: sub._id }).sort({ name: 1 }).lean()
-    for (const third of thirds) {
-      const thirdImg = resolveImageUrl(third.bannerImage)
-      pushItem({
-        id: `third-${third._id}`,
-        image: isUsableGalleryUrl(thirdImg) ? thirdImg : pickImage(CELEBRATE_IMAGE_POOL, third.name),
-        title: third.name,
-        href: `/categories/${mainSlug}/${subSlug}/${slugifyName(third.name)}`,
-      })
+  return thirds.map((third) => {
+    const image = resolveImageUrl(third.bannerImage)
+    return {
+      id: String(third._id),
+      image: isUsableGalleryUrl(image) ? image : null,
+      title: third.name,
+      href: `/categories/${mainSlug}/${subSlug}/${slugifyName(third.name)}`,
     }
+  })
+}
+
+function buildBookingSection() {
+  return {
+    brandLabel: DEFAULT_BOOKING.brandLabel,
+    title: DEFAULT_BOOKING.title,
+    description: DEFAULT_BOOKING.description,
+    image: DEFAULT_BOOKING.image,
+    cta: DEFAULT_BOOKING.cta,
+    form: DEFAULT_BOOKING.form,
+  }
+}
+
+async function resolveBookingBannerImage() {
+  const banners = await bannersForPlacement('corporate_booking')
+  const banner = banners[0]
+  return resolveImageUrl(banner?.image) || null
+}
+
+function contactPayloadFromBookingFields(fields) {
+  if (!fields || typeof fields !== 'object') {
+    throw new Error('Form data is required')
   }
 
-  if (items.length === 0) {
-    CELEBRATE_IMAGE_POOL.slice(0, 6).forEach((url, i) => {
-      pushItem({
-        id: `gifting-fb-${i}`,
-        image: url,
-        title: 'Corporate gifting',
-        href: `/categories/${mainSlug}`,
-      })
-    })
+  const firstName = String(fields.firstName || fields.name || '').trim()
+  const lastName = String(fields.lastName || '').trim()
+  const name = [firstName, lastName].filter(Boolean).join(' ').trim()
+  const email = String(fields.email || '').trim().toLowerCase()
+  const phoneRaw = String(fields.phone || '').replace(/\D/g, '')
+  const phone = phoneRaw.length >= 10 ? phoneRaw.slice(-10) : phoneRaw
+
+  if (!name) throw new Error('Name is required')
+  if (!email) throw new Error('Email is required')
+  if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+    throw new Error('Please use a valid 10-digit Indian mobile number')
   }
 
-  return items
+  const messageLines = []
+  if (fields.company && String(fields.company).trim()) {
+    messageLines.push(`Company: ${String(fields.company).trim()}`)
+  }
+  if (fields.eventDetails && String(fields.eventDetails).trim()) {
+    messageLines.push(String(fields.eventDetails).trim())
+  }
+
+  const reserved = new Set([
+    'firstName',
+    'lastName',
+    'name',
+    'email',
+    'phone',
+    'company',
+    'eventDetails',
+  ])
+  for (const [key, value] of Object.entries(fields)) {
+    if (reserved.has(key)) continue
+    const v = value != null ? String(value).trim() : ''
+    if (v) messageLines.push(`${key}: ${v}`)
+  }
+
+  return {
+    name,
+    email,
+    phone,
+    serviceType: 'Corporate Event Booking',
+    message: messageLines.join('\n\n') || 'Corporate event inquiry from /corporate-events',
+  }
+}
+
+const submitCorporateBooking = async (fields) => {
+  const { submitContact } = require('./user-services')
+  const payload = contactPayloadFromBookingFields(fields)
+  return submitContact(payload)
 }
 
 const getCorporatePage = async () => {
@@ -199,9 +244,17 @@ const getCorporatePage = async () => {
     name: { $regex: new RegExp(`^${CORPORATE_MAIN_CATEGORY_NAME}$`, 'i') },
   }).lean()
 
+  const bookingBannerImage = await resolveBookingBannerImage()
+  const bookingBase = buildBookingSection()
+  const booking = {
+    ...bookingBase,
+    image: bookingBannerImage || bookingBase.image,
+  }
+
   if (!mainDoc) {
     return {
-      hero: DEFAULT_HERO,
+      hero: { ...DEFAULT_HERO, image: null },
+      booking,
       celebrate: {
         heading: 'We Help Celebrate',
         subtitle:
@@ -209,22 +262,16 @@ const getCorporatePage = async () => {
         items: [],
       },
       stats: DEFAULT_STATS,
-      gallery: { heading: 'Our Gallery', filters: GALLERY_FILTERS, items: [] },
+      gallery: { heading: 'Our Gallery', tabs: [] },
       gifting: { heading: 'CORPORATE GIFTING', items: [] },
       mainCategorySlug: 'corporate-events',
     }
   }
 
   const mainSlug = slugifyName(mainDoc.name)
-  const heroBanners = await bannersForPlacement('corporate_hero')
-  const heroBanner = heroBanners[0]
-  const hero = {
-    title: heroBanner?.title?.trim() || DEFAULT_HERO.title,
-    subtitle: DEFAULT_HERO.subtitle,
-    image: resolveImageUrl(heroBanner?.image) || DEFAULT_HERO.image,
-  }
+  const hero = await buildHero()
 
-  const [celebrateItems, galleryItems, giftingItems] = await Promise.all([
+  const [celebrateItems, gallery, giftingItems] = await Promise.all([
     buildCelebrateCards(mainDoc),
     buildGallery(mainDoc, mainSlug),
     buildGifting(mainDoc, mainSlug),
@@ -232,6 +279,7 @@ const getCorporatePage = async () => {
 
   return {
     hero,
+    booking,
     celebrate: {
       heading: 'We Help Celebrate',
       subtitle:
@@ -239,11 +287,7 @@ const getCorporatePage = async () => {
       items: celebrateItems,
     },
     stats: DEFAULT_STATS,
-    gallery: {
-      heading: 'Our Gallery',
-      filters: GALLERY_FILTERS,
-      items: galleryItems,
-    },
+    gallery,
     gifting: {
       heading: 'CORPORATE GIFTING',
       items: giftingItems,
@@ -252,4 +296,4 @@ const getCorporatePage = async () => {
   }
 }
 
-module.exports = { getCorporatePage }
+module.exports = { getCorporatePage, submitCorporateBooking }

@@ -71,8 +71,12 @@ router.get('/google/callback', async (req, res) => {
     res.cookie('accessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
     res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
 
-    // Redirect to frontend after login
-    res.redirect(process.env.GOOGLE_LOGIN_SUCCESS_REDIRECT || 'http://localhost:3000')
+    // Redirect to frontend after login (?login=success lets guest app hydrate session)
+    const successBase = (process.env.GOOGLE_LOGIN_SUCCESS_REDIRECT || 'http://localhost:3000').replace(/\/$/, '')
+    const successUrl = successBase.includes('?')
+      ? `${successBase}&login=success`
+      : `${successBase}?login=success`
+    res.redirect(successUrl)
   } catch (error) {
     res.status(500).json({ message: 'Google OAuth failed', error: error.message })
   }
