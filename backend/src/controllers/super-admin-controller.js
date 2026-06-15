@@ -135,6 +135,7 @@ const updateProduct = async (req, res) => {
     parseField('experiences')
     parseField('keyHighlights')
     parseField('tags')
+    parseField('balloonColorSelection')
     if (newImageUrls.length > 0) {
       const existing = Array.isArray(body.images) ? body.images : []
       body.images = [...existing, ...newImageUrls]
@@ -418,6 +419,13 @@ const updateThirdCategory = async (req, res) => {
     const ThirdCategory = require('../models/third-category-model')
     const bannerImage = req.file ? multerUpload.getStoredFileUrl(req.file) : undefined
     const updateData = { ...req.body }
+    if (typeof updateData.balloonColorSelection === 'string') {
+      try {
+        updateData.balloonColorSelection = JSON.parse(updateData.balloonColorSelection)
+      } catch {
+        delete updateData.balloonColorSelection
+      }
+    }
     if (bannerImage) updateData.bannerImage = bannerImage
     const category = await ThirdCategory.findByIdAndUpdate(
       req.params.id, updateData, { new: true }

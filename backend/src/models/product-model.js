@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const balloonColorSelectionSchema = require('./balloon-color-selection-schema')
 
 const productSchema = new mongoose.Schema({
   name: {
@@ -147,6 +148,11 @@ const productSchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
+  /** Balloon color picker on PDP — Decorations › Balloon Decoration products */
+  balloonColorSelection: {
+    type: balloonColorSelectionSchema,
+    default: undefined,
+  },
   /** Set only by catalog seed scripts; stripped from API JSON via toJSON. Used for idempotent cleanup. */
   catalogSeed: {
     type: Boolean,

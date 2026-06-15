@@ -6,6 +6,7 @@
  * Prerequisites:
  *   - MONGODB_URI in .env
  *   - Category tree (npm run seed:categories)
+ *   - Addon catalog (npm run seed:addons)
  *   - An Admin user, or SEED_DUMMY_ADMIN_EMAIL + SEED_DUMMY_ADMIN_PASSWORD
  *
  * Run: npm run seed:test-products
@@ -15,12 +16,27 @@ const mongoose = require('mongoose')
 
 const Product = require('./src/models/product-model')
 const Admin = require('./src/models/admin-model')
+const Addon = require('./src/models/addon-model')
 const MainCategory = require('./src/models/main-category-model')
 const SubCategory = require('./src/models/sub-category-model')
 const ThirdCategory = require('./src/models/third-category-model')
 const { placeholderImage } = require('./src/utils/catalogSeedProductCopy')
 
 const TEST_TAG = 'seed-test-product'
+
+const RECOMMENDED_ADDON_NAMES = [
+  'Alphabet Foil Balloon Set',
+  'Personalized Text Balloons',
+  'Shape Foil Balloon Pack',
+  'Birthday Cake Add-on',
+  'Cake Topper',
+  'Birthday Candles',
+]
+
+const ENGAGEMENT_ADDON_NAMES = [
+  'Party Games Pack',
+  'Photo Booth Props Set',
+]
 
 const TEST_PRODUCTS = [
   {
@@ -152,6 +168,43 @@ function buildTestProductDoc(template, triple, adminId, index) {
   }
 }
 
+async function findAddonsInOrder(names) {
+  const found = await Addon.find({ name: { $in: names } }).lean()
+  const byName = new Map(found.map((a) => [a.name, a]))
+  return names.map((name) => byName.get(name)).filter(Boolean)
+}
+
+async function attachCustomizationSections(products) {
+  const recommendedAddons = await findAddonsInOrder(RECOMMENDED_ADDON_NAMES)
+  const engagementAddons = await findAddonsInOrder(ENGAGEMENT_ADDON_NAMES)
+
+  if (!recommendedAddons.length && !engagementAddons.length) {
+    console.warn('No addons found — run `npm run seed:addons` first.')
+    return
+  }
+
+  const sections = [
+    {
+      name: 'Recommended',
+      priority: 0,
+      addons: recommendedAddons.map((addon) => ({ addon: addon._id })),
+    },
+    {
+      name: 'Engagement Activity',
+      priority: 1,
+      addons: engagementAddons.map((addon) => ({ addon: addon._id })),
+    },
+  ].filter((section) => section.addons.length > 0)
+
+  for (const product of products) {
+    await Product.findByIdAndUpdate(product._id, { customizationSections: sections })
+  }
+
+  console.log(
+    `Linked Recommended (${recommendedAddons.length}) + Engagement Activity (${engagementAddons.length}) on ${products.length} test product(s).`
+  )
+}
+
 async function seed() {
   if (!process.env.MONGODB_URI) {
     console.error('MONGODB_URI is not set (check .env)')
@@ -181,6 +234,8 @@ async function seed() {
   await Admin.findByIdAndUpdate(admin._id, {
     $addToSet: { products: { $each: inserted.map((p) => p._id) } },
   })
+
+  await attachCustomizationSections(inserted)
 
   console.log(`Inserted ${inserted.length} test products (₹1 checkout):`)
   inserted.forEach((p) => {

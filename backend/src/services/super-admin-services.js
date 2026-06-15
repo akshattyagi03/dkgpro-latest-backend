@@ -263,7 +263,8 @@ const editProduct = async (productId, updateData) => {
     'location', 'setupDuration', 'teamSize', 'advanceBooking',
     'cancellationPolicy', 'youtubeVideoLink',
     'inclusions', 'experiences', 'keyHighlights',
-    'customizationSections', 'additionalCategories', 'tags'
+    'customizationSections', 'additionalCategories', 'tags',
+    'balloonColorSelection'
   ]
 
   const update = {}

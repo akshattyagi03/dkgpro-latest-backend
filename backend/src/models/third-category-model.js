@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const balloonColorSelectionSchema = require('./balloon-color-selection-schema')
 
 const thirdCategorySchema = new mongoose.Schema({
   name: {
@@ -18,7 +19,12 @@ const thirdCategorySchema = new mongoose.Schema({
   bannerImage: {
     type: String,
     default: null
-  }
+  },
+  /** Default balloon color presets for all products in this third category */
+  balloonColorSelection: {
+    type: balloonColorSelectionSchema,
+    default: undefined,
+  },
 }, { timestamps: true })
 
 module.exports = mongoose.model('ThirdCategory', thirdCategorySchema)

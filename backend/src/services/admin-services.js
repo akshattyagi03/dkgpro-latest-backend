@@ -127,7 +127,8 @@ const addProducts = async (productData, adminId) => {
     tags,
     inclusions,
     experiences,
-    keyHighlights
+    keyHighlights,
+    balloonColorSelection
   } = productData
 
   if (discountedPrice && Number(discountedPrice) >= Number(price)) {
@@ -214,7 +215,8 @@ const addProducts = async (productData, adminId) => {
     // ✅ ADD THESE
     inclusions: inclusions || [],
     experiences: experiences || [],
-    keyHighlights: keyHighlights || []
+    keyHighlights: keyHighlights || [],
+    balloonColorSelection: balloonColorSelection || undefined,
   })
 
   await product.save()
