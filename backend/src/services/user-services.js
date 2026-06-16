@@ -778,9 +778,40 @@ const getSearchSuggestions = async (rawQ, city, limit = 8) => {
 }
 
 /**
- * Replace user cart from checkout snapshot (product ids, quantities, optional addon lines).
+ * Replace user cart from checkout snapshot (product ids, quantities, optional addon lines + booking details).
  * Used by guest checkout so totals match customization add-ons.
  */
+const normalizeBookingDetails = (raw) => {
+  if (!raw || typeof raw !== 'object') return undefined
+  const pincode = String(raw.pincode || '').trim().slice(0, 12)
+  const district = raw.district != null ? String(raw.district).trim().slice(0, 120) : undefined
+  const bookingDate = String(raw.bookingDate || '').trim().slice(0, 32)
+  const startTime = String(raw.startTime || '').trim().slice(0, 16)
+  const endTime = String(raw.endTime || '').trim().slice(0, 16)
+
+  let balloonColorChoice
+  const bc = raw.balloonColorChoice
+  if (bc && typeof bc === 'object') {
+    const mode = ['default', 'preset', 'custom'].includes(bc.mode) ? bc.mode : 'default'
+    const label = String(bc.label || '').trim().slice(0, 200)
+    const colors = Array.isArray(bc.colors)
+      ? bc.colors.map((c) => String(c).trim().slice(0, 80)).filter(Boolean).slice(0, 4)
+      : undefined
+    balloonColorChoice = { mode, label, ...(colors?.length ? { colors } : {}) }
+  }
+
+  if (!pincode && !bookingDate && !balloonColorChoice) return undefined
+
+  return {
+    ...(pincode ? { pincode } : {}),
+    ...(district ? { district } : {}),
+    ...(bookingDate ? { bookingDate } : {}),
+    ...(startTime ? { startTime } : {}),
+    ...(endTime ? { endTime } : {}),
+    ...(balloonColorChoice ? { balloonColorChoice } : {}),
+  }
+}
+
 const syncCheckoutCart = async (userId, rawItems) => {
   const Cart = require('../models/cart-model')
   const Product = require('../models/product-model')
@@ -816,10 +847,12 @@ const syncCheckoutCart = async (userId, rawItems) => {
         })
       }
     }
+    const bookingDetails = normalizeBookingDetails(row.bookingDetails)
     newItems.push({
       product: product._id,
       quantity,
-      bookingAddonLines
+      bookingAddonLines,
+      ...(bookingDetails ? { bookingDetails } : {}),
     })
   }
   cart.items = newItems

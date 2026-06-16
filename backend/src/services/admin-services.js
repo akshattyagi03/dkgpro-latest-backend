@@ -34,6 +34,18 @@ const productScopeForAdmin = (adminId) => ({
   $or: [{ addedBy: adminId }, { catalogSeed: true }]
 })
 
+function orderItemLineTotal(item) {
+  const packageTotal = (Number(item.price) || 0) * (Number(item.quantity) || 1)
+  const addonTotal = Array.isArray(item.bookingAddonLines)
+    ? item.bookingAddonLines.reduce((sum, line) => sum + (Number(line.lineTotal) || 0), 0)
+    : 0
+  return packageTotal + addonTotal
+}
+
+function sumOrderItemsTotal(items) {
+  return (items || []).reduce((sum, item) => sum + orderItemLineTotal(item), 0)
+}
+
 const canAdminMutateProduct = (productDoc, adminId) => {
   if (!productDoc) return false
   if (productDoc.catalogSeed === true) return true
@@ -1192,7 +1204,7 @@ const getAdminOrders = async (adminId, page = 1, limit = 10) => {
     const myItems = o.items.filter(item =>
       item.product && adminProductIds.includes(item.product._id.toString())
     )
-    const myTotal = myItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    const myTotal = sumOrderItemsTotal(myItems)
 
     return {
       id: o._id,
@@ -1205,6 +1217,8 @@ const getAdminOrders = async (adminId, page = 1, limit = 10) => {
       orderTotal: o.totalAmount,
       status: o.status,
       shippingAddress: o.shippingAddress,
+      razorpayOrderId: o.razorpayOrderId,
+      razorpayPaymentId: o.razorpayPaymentId,
       createdAt: o.createdAt,
       updatedAt: o.updatedAt
     }
@@ -1241,7 +1255,7 @@ const getAdminOrderById = async (adminId, orderId) => {
   )
   if (myItems.length === 0) throw new Error('Order not found')
 
-  const myTotal = myItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const myTotal = sumOrderItemsTotal(myItems)
 
   return {
     id: o._id,
@@ -1254,6 +1268,8 @@ const getAdminOrderById = async (adminId, orderId) => {
     orderTotal: o.totalAmount,
     status: o.status,
     shippingAddress: o.shippingAddress,
+    razorpayOrderId: o.razorpayOrderId,
+    razorpayPaymentId: o.razorpayPaymentId,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt
   }
@@ -1278,7 +1294,7 @@ const getSuperAdminOrders = async (page = 1, limit = 10) => {
 
   const formatted = orders.map((o) => {
     const allItems = o.items.filter((item) => item.product)
-    const myTotal = allItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    const myTotal = sumOrderItemsTotal(allItems)
     return {
       id: o._id,
       orderNumber: `ORD-${o._id.toString().slice(-6).toUpperCase()}`,
@@ -1290,6 +1306,8 @@ const getSuperAdminOrders = async (page = 1, limit = 10) => {
       orderTotal: o.totalAmount,
       status: o.status,
       shippingAddress: o.shippingAddress,
+      razorpayOrderId: o.razorpayOrderId,
+      razorpayPaymentId: o.razorpayPaymentId,
       createdAt: o.createdAt,
       updatedAt: o.updatedAt
     }
@@ -1317,7 +1335,7 @@ const getSuperAdminOrderById = async (orderId) => {
   if (!o) throw new Error('Order not found')
 
   const allItems = o.items.filter((item) => item.product)
-  const myTotal = allItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const myTotal = sumOrderItemsTotal(allItems)
 
   return {
     id: o._id,
@@ -1330,6 +1348,8 @@ const getSuperAdminOrderById = async (orderId) => {
     orderTotal: o.totalAmount,
     status: o.status,
     shippingAddress: o.shippingAddress,
+    razorpayOrderId: o.razorpayOrderId,
+    razorpayPaymentId: o.razorpayPaymentId,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt
   }

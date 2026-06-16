@@ -74,6 +74,22 @@ const createOrder = async (userId, orderData) => {
             quantity: l.quantity,
             lineTotal: l.lineTotal
           }))
+          : undefined,
+        bookingDetails: item.bookingDetails
+          ? {
+            pincode: item.bookingDetails.pincode,
+            district: item.bookingDetails.district,
+            bookingDate: item.bookingDetails.bookingDate,
+            startTime: item.bookingDetails.startTime,
+            endTime: item.bookingDetails.endTime,
+            balloonColorChoice: item.bookingDetails.balloonColorChoice
+              ? {
+                mode: item.bookingDetails.balloonColorChoice.mode,
+                label: item.bookingDetails.balloonColorChoice.label,
+                colors: item.bookingDetails.balloonColorChoice.colors
+              }
+              : undefined
+          }
           : undefined
       });
     }

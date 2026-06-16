@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bookingDetailsSchema = require('./booking-details-schema');
 
 const orderAddonLineSchema = new mongoose.Schema({
   sectionName: String,
@@ -24,6 +25,10 @@ const orderItemSchema = new mongoose.Schema({
   },
   bookingAddonLines: {
     type: [orderAddonLineSchema],
+    default: undefined
+  },
+  bookingDetails: {
+    type: bookingDetailsSchema,
     default: undefined
   }
 });
