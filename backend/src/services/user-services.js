@@ -1,4 +1,5 @@
 const { getMergedHomeProductSections } = require('./home-sections-service')
+const { checkPincode: checkPincodeService } = require('./pincode-services')
 const User = require('../models/user-model')
 const RefreshToken = require('../models/refresh-token-model')
 const OTP = require('../models/otp-model')
@@ -346,17 +347,7 @@ const getProducts = async (city = '') => {
   }
 }
 
-const checkPincode = async (pincode) => {
-  const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`)
-  const data = await response.json()
-  const district = data[0]?.PostOffice?.[0]?.District || null
-
-  if (!district) {
-    throw new Error('District not found')
-  }
-
-  return { district }
-}
+const checkPincode = checkPincodeService
 
 const refreshAccessToken = async (refreshTokenValue) => {
   const refreshToken = await RefreshToken.findOne({
