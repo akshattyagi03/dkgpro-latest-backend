@@ -474,6 +474,28 @@ const PINCODE_FALLBACK = {
   '560100': { city: 'Bangalore', district: 'Bangalore',      state: 'Karnataka' },
 };
 
+/**
+ * Hyper-local pincode → locality name for products that list neighborhoods/sectors
+ * (e.g. "Bandra West", "Gurgaon Sector 29"). Merged into checkPincode() results.
+ */
+const PINCODE_LOCALITY = {
+  // Mumbai
+  '400049': 'Juhu',
+  '400050': 'Bandra West',
+  '400051': 'Bandra West',
+  '400058': 'Juhu',
+  '400059': 'Andheri East',
+  '400069': 'Andheri East',
+  '400093': 'Andheri East',
+  // Gurgaon Sector 29
+  '122001': 'Sector 29',
+  '122002': 'Sector 29',
+  '122009': 'Sector 29',
+  // Noida Sector 18
+  '201301': 'Sector 18',
+  '201303': 'Sector 18',
+};
+
 // ---------------------------------------------------------------------------
 // 2. Normalization
 // ---------------------------------------------------------------------------
@@ -508,6 +530,36 @@ function tokensMatch(needleNormalized, haystackTokens) {
     if (!haystackTokens.has(token)) return false;
   }
   return true;
+}
+
+/** Strip India Post office suffixes: "Bandra West S.O" → "Bandra West" */
+function cleanLocalityName(name) {
+  if (!name || typeof name !== 'string') return '';
+  return name
+    .replace(/\s+(s\.?o\.?|b\.?o\.?|h\.?o\.?|sub office|head office)\b.*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildPincodeResult({ city, district, state, pincode, matchedBy, postOffice }) {
+  let locality = PINCODE_LOCALITY[pincode] || '';
+  if (!locality && postOffice?.Name) {
+    locality = cleanLocalityName(postOffice.Name);
+  }
+
+  const result = {
+    city,
+    district,
+    state,
+    pincode,
+    matchedBy,
+  };
+
+  if (locality) {
+    result.locality = locality;
+  }
+
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -732,7 +784,13 @@ async function checkPincode(pincode) {
   // 2. Local fallback map — resolves instantly, no network needed
   if (PINCODE_FALLBACK[pincodeStr]) {
     const { city, district, state } = PINCODE_FALLBACK[pincodeStr];
-    const result = { city, district, state, pincode: pincodeStr, matchedBy: 'fallback' };
+    const result = buildPincodeResult({
+      city,
+      district,
+      state,
+      pincode: pincodeStr,
+      matchedBy: 'fallback',
+    });
     pincodeCache.set(pincodeStr, result);
     return result;
   }
@@ -756,16 +814,84 @@ async function checkPincode(pincode) {
   }
 
   const { canonical, matchedBy, postOffice } = match;
-  const result = {
-    city:      canonical,
-    district:  postOffice.District || '',
-    state:     postOffice.State    || '',
-    pincode:   pincodeStr,
+  const result = buildPincodeResult({
+    city: canonical,
+    district: postOffice.District || '',
+    state: postOffice.State || '',
+    pincode: pincodeStr,
     matchedBy,
-  };
+    postOffice,
+  });
 
   pincodeCache.set(pincodeStr, result);
   return result;
+}
+
+/** Canonical cities that belong to the Delhi NCR service bucket. */
+const DELHI_NCR_CITIES = new Set(['delhi', 'gurgaon', 'noida', 'faridabad', 'ghaziabad']);
+
+function cityEntryMatches(resolved, areaCity) {
+  if (!areaCity || !resolved?.city) return false;
+
+  const areaCityNorm = normalize(areaCity);
+  const resolvedCity = normalize(resolved.city);
+  if (!areaCityNorm || !resolvedCity) return false;
+
+  if (areaCityNorm === 'delhi ncr') {
+    if (DELHI_NCR_CITIES.has(resolvedCity)) return true;
+    const resolvedCanonical = aliasToCanonical.get(resolvedCity);
+    if (resolvedCanonical && DELHI_NCR_CITIES.has(normalize(resolvedCanonical))) {
+      return true;
+    }
+  }
+
+  if (areaCityNorm === resolvedCity) return true;
+
+  const resolvedCanonical = aliasToCanonical.get(resolvedCity);
+  const areaCanonical = aliasToCanonical.get(areaCityNorm);
+
+  if (resolvedCanonical && normalize(resolvedCanonical) === areaCityNorm) return true;
+  if (areaCanonical && normalize(areaCanonical) === resolvedCity) return true;
+  if (resolvedCanonical && areaCanonical && resolvedCanonical === areaCanonical) return true;
+  if (resolvedCanonical === areaCity || areaCanonical === resolved.city) return true;
+
+  return false;
+}
+
+function districtEntryMatches(resolved, districtEntry) {
+  if (!districtEntry || !resolved) return false;
+
+  const entry = normalize(districtEntry);
+  if (!entry) return false;
+
+  const entryTokens = tokenSet(entry);
+  const combined = normalize(
+    [resolved.city, resolved.locality, resolved.district].filter(Boolean).join(' ')
+  );
+
+  const fieldCandidates = [
+    normalize(resolved.locality || ''),
+    normalize(resolved.district || ''),
+  ].filter(Boolean);
+
+  for (const candidate of fieldCandidates) {
+    if (entry === candidate) return true;
+    if (candidate.includes(entry) || entry.includes(candidate)) return true;
+    if (tokensMatch(entry, tokenSet(candidate)) || tokensMatch(candidate, entryTokens)) {
+      return true;
+    }
+  }
+
+  if (combined) {
+    if (entry === combined) return true;
+    if (tokensMatch(entry, tokenSet(combined))) return true;
+  }
+
+  const cityNorm = normalize(resolved.city || '');
+  if (cityNorm && entry === cityNorm) return true;
+  if (cityNorm && entryTokens.size === 1 && entryTokens.has(cityNorm)) return true;
+
+  return false;
 }
 
 /**
@@ -775,43 +901,37 @@ async function checkPincode(pincode) {
  * as the city index — so "Gurgaon" in the pincode result matches "gurgaon",
  * "Gurugram", or any alias in serviceableAreas.city.
  *
- * Usage:
- *   const resolved = await checkPincode(pincode)
- *   if (!resolved) return res.json({ serviceable: false })
- *   const serviceable = isPincodeServiceableForProduct(resolved, product)
- *   return res.json({ serviceable, ...resolved })
- *
  * @param {PincodeResult}  resolved  - Result from checkPincode()
  * @param {Object}         product   - Mongoose Product document
  * @returns {boolean}
  */
 function isPincodeServiceableForProduct(resolved, product) {
-  if (!resolved || !Array.isArray(product.serviceableAreas)) return false;
-
-  const resolvedCity     = normalize(resolved.city);
-  const resolvedDistrict = normalize(resolved.district);
+  if (!resolved) return false;
+  if (!Array.isArray(product.serviceableAreas) || product.serviceableAreas.length === 0) {
+    return true;
+  }
 
   for (const area of product.serviceableAreas) {
-    const areaCity = normalize(area.city);
+    if (!cityEntryMatches(resolved, area.city)) continue;
 
-    // City match: direct OR via canonical alias
-    const cityMatches =
-      areaCity === resolvedCity ||
-      aliasToCanonical.get(areaCity) === resolved.city ||
-      aliasToCanonical.get(resolvedCity) === area.city;
-
-    if (!cityMatches) continue;
-
-    // If no districts are listed for this area, the whole city is serviceable
-    if (!area.districts || area.districts.length === 0) return true;
-
-    // If districts are listed, the resolved district must be in the list
-    for (const d of area.districts) {
-      if (normalize(d) === resolvedDistrict) return true;
-    }
+    const districts = area.districts || [];
+    if (districts.length === 0) return true;
+    if (districts.some((d) => districtEntryMatches(resolved, d))) return true;
   }
 
   return false;
 }
 
-module.exports = { checkPincode, isPincodeServiceableForProduct };
+module.exports = {
+  checkPincode,
+  isPincodeServiceableForProduct,
+  // exported for unit tests
+  __test: {
+    cityEntryMatches,
+    districtEntryMatches,
+    normalize,
+    cleanLocalityName,
+    PINCODE_FALLBACK,
+    PINCODE_LOCALITY,
+  },
+};

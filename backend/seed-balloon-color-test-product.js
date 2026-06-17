@@ -162,7 +162,7 @@ async function seed() {
     serviceableAreas: [
       { city: 'Mumbai', districts: ['Andheri', 'Bandra', 'Juhu'] },
       { city: 'Bengaluru', districts: ['Indiranagar', 'Koramangala'] },
-      { city: 'Delhi NCR', districts: ['Gurgaon', 'Noida'] },
+      { city: 'Delhi NCR', districts: ['Delhi', 'Gurgaon', 'Noida', 'Faridabad', 'Ghaziabad'] },
     ],
     isFeatured: true,
     tier: 'standard',

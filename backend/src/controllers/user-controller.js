@@ -1,5 +1,6 @@
 const reviewModel = require('../models/review-model')
 const multerUpload = require('../../configuration/multer-config')
+const { isPincodeServiceableForProduct } = require('../services/pincode-services')
 const {
   sendUserOTP,
   verifyUserOTP,
@@ -109,10 +110,40 @@ const home = async (req, res) => {
 
 const checkPincodeDistrict = async (req, res) => {
   try {
-    const result = await checkPincode(req.params.pincode)
-    res.status(HTTP_STATUS.OK).json(result)
+    const pincode = String(req.params.pincode || '').trim()
+    const result = await checkPincode(pincode)
+
+    if (!result) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        serviceable: false,
+        message: 'Pincode not found or could not be resolved',
+      })
+    }
+
+    const { productId } = req.query
+    let serviceable = true
+
+    if (productId) {
+      const Product = require('../models/product-model')
+      const product = await Product.findById(productId).select('serviceableAreas')
+      if (!product) {
+        return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Product not found' })
+      }
+      serviceable = isPincodeServiceableForProduct(result, product)
+    }
+
+    return res.status(HTTP_STATUS.OK).json({
+      ...result,
+      serviceable,
+      district: result.district,
+      city: result.city,
+      state: result.state,
+    })
   } catch (error) {
-    res.status(HTTP_STATUS.NOT_FOUND).json({ error: error.message })
+    return res.status(HTTP_STATUS.BAD_REQUEST).json({
+      serviceable: false,
+      error: error.message,
+    })
   }
 }
 
