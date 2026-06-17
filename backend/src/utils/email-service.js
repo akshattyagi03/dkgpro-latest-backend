@@ -62,6 +62,114 @@ const hexToRgb = (hex) => {
   }
 }
 
+// ─── Invoice line helpers ─────────────────────────────────────────────────────
+
+function addonsSum(item) {
+  if (!item.bookingAddonLines?.length) return 0
+  return item.bookingAddonLines.reduce((sum, addon) => sum + (Number(addon.lineTotal) || 0), 0)
+}
+
+function packageLineAmount(item) {
+  return (Number(item.price) || 0) * (Number(item.quantity) || 0)
+}
+
+function itemLineAmount(item) {
+  return packageLineAmount(item) + addonsSum(item)
+}
+
+function orderPackageSubtotal(order) {
+  return (order.items || []).reduce((sum, item) => sum + packageLineAmount(item), 0)
+}
+
+function orderAddonsSubtotal(order) {
+  return (order.items || []).reduce((sum, item) => sum + addonsSum(item), 0)
+}
+
+function orderItemsSubtotal(order) {
+  return (order.items || []).reduce((sum, item) => sum + itemLineAmount(item), 0)
+}
+
+function formatBalloonColorsForInvoice(choice) {
+  if (!choice || choice.mode === 'default') return null
+  if (choice.colors?.length) return choice.colors.join(' & ')
+  return choice.label?.trim() || null
+}
+
+function buildProductDescription(item) {
+  const parts = []
+  if (item.product?.description) parts.push(item.product.description)
+
+  const booking = item.bookingDetails
+  if (booking) {
+    const balloonColors = formatBalloonColorsForInvoice(booking.balloonColorChoice)
+    if (balloonColors) parts.push(`Balloon colors: ${balloonColors}`)
+
+    if (booking.bookingDate) {
+      let schedule = `Service date: ${booking.bookingDate}`
+      if (booking.startTime) {
+        schedule += ` ${booking.startTime}`
+        if (booking.endTime) schedule += `–${booking.endTime}`
+      }
+      if (booking.pincode) {
+        schedule += ` · PIN ${booking.pincode}`
+        if (booking.district) schedule += ` (${booking.district})`
+      }
+      parts.push(schedule)
+    }
+  }
+
+  return parts.join(' · ')
+}
+
+/** Flat invoice rows: one product row per item, then sorted add-on rows. */
+function buildInvoiceRows(order) {
+  const rows = []
+
+  for (const item of order.items || []) {
+    rows.push({
+      type: 'product',
+      service: item.product?.name || 'Product',
+      description: buildProductDescription(item) || '—',
+      rate: Number(item.price) || 0,
+      qty: Number(item.quantity) || 0,
+      amount: packageLineAmount(item)
+    })
+
+    const sortedAddons = [...(item.bookingAddonLines || [])].sort((a, b) =>
+      `${a.addonName ?? ''}`.trim().toLowerCase().localeCompare(
+        `${b.addonName ?? ''}`.trim().toLowerCase(),
+        'en',
+        { sensitivity: 'base' }
+      )
+    )
+
+    for (const addon of sortedAddons) {
+      const qty = Number(addon.quantity) || 1
+      const lineTotal = Number(addon.lineTotal) || 0
+      const section = addon.sectionName ? `[${addon.sectionName}] ` : ''
+      rows.push({
+        type: 'addon',
+        service: `Add-on: ${addon.addonName || '—'}`,
+        description: section ? section.trim() : 'Customization',
+        rate: qty > 0 ? lineTotal / qty : lineTotal,
+        qty,
+        amount: lineTotal
+      })
+    }
+  }
+
+  return rows
+}
+
+function pdfInvoiceRowHeight(doc, row, colW) {
+  doc.fontSize(9).font(row.type === 'addon' ? 'Helvetica' : 'Helvetica-Bold')
+  const serviceH = doc.heightOfString(row.service, { width: colW.svc - 6 })
+  doc.font('Helvetica')
+  const descH = doc.heightOfString(row.description || '—', { width: colW.desc - 6 })
+  const minH = row.type === 'addon' ? 24 : 28
+  return Math.max(minH, Math.ceil(Math.max(serviceH, descH)) + 14)
+}
+
 // ─── PDF Generator ────────────────────────────────────────────────────────────
 
 const generateInvoicePDF = (order) => {
@@ -82,9 +190,12 @@ const generateInvoicePDF = (order) => {
     const orderNumber = `ORD-${order._id.toString().slice(-6).toUpperCase()}`
     const invoiceDate = new Date(order.updatedAt || Date.now()).toLocaleDateString('en-IN')
     const { street, city, state, zipCode, country } = order.shippingAddress || {}
-    const subtotal    = order.items.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0)
-    const taxAmount   = order.taxAmount || 0
+    const packageSubtotal = orderPackageSubtotal(order)
+    const addonsSubtotal = orderAddonsSubtotal(order)
+    const subtotal = orderItemsSubtotal(order)
+    const taxAmount = order.taxAmount || 0
     const totalAmount = order.totalAmount || subtotal + taxAmount
+    const invoiceRows = buildInvoiceRows(order)
 
     // ── 1. HERO HEADER — deep purple gradient ──────────────────────────────────
     const heroH = 110
@@ -154,7 +265,6 @@ const generateInvoicePDF = (order) => {
     // ── 7. TABLE ──────────────────────────────────────────────────────────────
     const colX  = { svc: L,       desc: L+130, rate: L+320, qty: L+400, amt: L+455 }
     const colW  = { svc: 124,     desc: 184,   rate: 74,    qty: 50,    amt: 60   }
-    const rowH  = 28
     const hdrH  = 26
 
     // Table header — purple gradient (NO .clip() — that was breaking row rendering)
@@ -170,34 +280,26 @@ const generateInvoicePDF = (order) => {
     y += hdrH
 
     // Table rows
-    order.items.forEach((item, index) => {
-      const service     = item.product?.name || 'Product'
-      const description = item.product?.description || ''
-      const qty         = item.quantity || 0
-      const rate        = item.price || 0
-      const amount      = rate * qty
-      const rowBg       = index % 2 === 0 ? '#ffffff' : '#fafbff'
+    invoiceRows.forEach((row, index) => {
+      const rowH = pdfInvoiceRowHeight(doc, row, colW)
+      const isAddon = row.type === 'addon'
+      const rowBg = isAddon
+        ? (index % 2 === 0 ? '#f9fafb' : '#f3f4f6')
+        : (index % 2 === 0 ? '#ffffff' : '#fafbff')
 
-      // Background
       doc.rect(L, y, CW, rowH).fill(rowBg)
-      // Bottom border
       doc.moveTo(L, y + rowH).lineTo(R, y + rowH).strokeColor('#ede9fe').lineWidth(0.5).stroke()
 
-      // Service name (bold, dark)
-      doc.fontSize(9).fillColor('#1a1a2e').font('Helvetica-Bold')
-        .text(service, colX.svc + 6, y + 9, { width: colW.svc - 6, lineBreak: false })
-      // Description (grey)
-      doc.fontSize(9).fillColor('#6b7280').font('Helvetica')
-        .text(description, colX.desc + 6, y + 9, { width: colW.desc - 6, lineBreak: false })
-      // Rate
+      doc.fontSize(isAddon ? 8.5 : 9).fillColor(isAddon ? '#4b5563' : '#1a1a2e').font(isAddon ? 'Helvetica' : 'Helvetica-Bold')
+        .text(row.service, colX.svc + 6, y + 8, { width: colW.svc - 6 })
+      doc.fontSize(isAddon ? 8.5 : 9).fillColor('#6b7280').font('Helvetica')
+        .text(row.description || '—', colX.desc + 6, y + 8, { width: colW.desc - 6 })
       doc.fontSize(9).fillColor('#374151').font('Helvetica')
-        .text(`Rs.${rate.toLocaleString('en-IN')}`, colX.rate, y + 9, { width: colW.rate, align: 'right', lineBreak: false })
-      // Qty
+        .text(`Rs.${Math.round(row.rate).toLocaleString('en-IN')}`, colX.rate, y + 8, { width: colW.rate, align: 'right', lineBreak: false })
       doc.fontSize(9).fillColor('#374151').font('Helvetica')
-        .text(String(qty), colX.qty, y + 9, { width: colW.qty, align: 'right', lineBreak: false })
-      // Amount (bold)
-      doc.fontSize(9).fillColor('#1a1a2e').font('Helvetica-Bold')
-        .text(`Rs.${amount.toLocaleString('en-IN')}`, colX.amt, y + 9, { width: colW.amt, align: 'right', lineBreak: false })
+        .text(String(row.qty), colX.qty, y + 8, { width: colW.qty, align: 'right', lineBreak: false })
+      doc.fontSize(9).fillColor(isAddon ? '#374151' : '#1a1a2e').font(isAddon ? 'Helvetica' : 'Helvetica-Bold')
+        .text(`Rs.${Math.round(row.amount).toLocaleString('en-IN')}`, colX.amt, y + 8, { width: colW.amt, align: 'right', lineBreak: false })
 
       y += rowH
     })
@@ -209,6 +311,24 @@ const generateInvoicePDF = (order) => {
     const totRowH = 26
 
     // Sub Total row
+    doc.rect(totX, y, totW, totRowH).fill('#f8f4ff')
+    doc.fontSize(9.5).fillColor('#6b7280').font('Helvetica')
+      .text('Package subtotal', totX + 12, y + 8, { width: 110, lineBreak: false })
+    doc.fontSize(9.5).fillColor('#374151').font('Helvetica-Bold')
+      .text(`Rs.${packageSubtotal.toLocaleString('en-IN')}`, totX + 12, y + 8, { width: totW - 24, align: 'right', lineBreak: false })
+    y += totRowH
+
+    if (addonsSubtotal > 0) {
+      doc.moveTo(totX, y).lineTo(R, y).strokeColor('#ede9fe').lineWidth(0.5).stroke()
+      doc.rect(totX, y, totW, totRowH).fill('#f8f4ff')
+      doc.fontSize(9.5).fillColor('#6b7280').font('Helvetica')
+        .text('Add-ons subtotal', totX + 12, y + 8, { width: 110, lineBreak: false })
+      doc.fontSize(9.5).fillColor('#374151').font('Helvetica-Bold')
+        .text(`Rs.${addonsSubtotal.toLocaleString('en-IN')}`, totX + 12, y + 8, { width: totW - 24, align: 'right', lineBreak: false })
+      y += totRowH
+    }
+
+    doc.moveTo(totX, y).lineTo(R, y).strokeColor('#ede9fe').lineWidth(0.5).stroke()
     doc.rect(totX, y, totW, totRowH).fill('#f8f4ff')
     doc.fontSize(9.5).fillColor('#6b7280').font('Helvetica')
       .text('Sub Total', totX + 12, y + 8, { width: 90, lineBreak: false })
@@ -274,19 +394,20 @@ const sendOrderConfirmationEmail = async (email, order) => {
   // Encode SVG as base64 data URI for <img> tag (works in all email clients)
   const logoDataUri = `data:image/svg+xml;base64,${Buffer.from(logoSvg).toString('base64')}`
 
-  const itemRows = order.items.map((item, index) => {
-    const description = item.product?.description || ''
-    const rate = item.price || 0
-    const amount = rate * (item.quantity || 0)
-    const rowBg = index % 2 === 0 ? '#ffffff' : '#fafbff'
+  const itemRows = buildInvoiceRows(order).map((row, index) => {
+    const rowBg = row.type === 'addon'
+      ? (index % 2 === 0 ? '#f9fafb' : '#f3f4f6')
+      : (index % 2 === 0 ? '#ffffff' : '#fafbff')
+    const serviceWeight = row.type === 'addon' ? 500 : 600
+    const serviceColor = row.type === 'addon' ? '#4b5563' : '#1a1a2e'
 
     return `
       <tr>
-        <td style="padding:14px 18px;border-bottom:1px solid #f0f0f7;font-weight:600;color:#1a1a2e;font-size:13px;background:${rowBg};">${item.product?.name || 'Product'}</td>
-        <td style="padding:14px 18px;border-bottom:1px solid #f0f0f7;color:#6b7280;font-size:13px;background:${rowBg};">${description}</td>
-        <td style="padding:14px 18px;border-bottom:1px solid #f0f0f7;text-align:right;color:#374151;font-size:13px;background:${rowBg};">Rs.${rate.toLocaleString('en-IN')}</td>
-        <td style="padding:14px 18px;border-bottom:1px solid #f0f0f7;text-align:right;color:#374151;font-size:13px;background:${rowBg};">${item.quantity || 0}</td>
-        <td style="padding:14px 18px;border-bottom:1px solid #f0f0f7;text-align:right;font-weight:600;color:#1a1a2e;font-size:13px;background:${rowBg};">Rs.${amount.toLocaleString('en-IN')}</td>
+        <td style="padding:14px 18px;border-bottom:1px solid #f0f0f7;font-weight:${serviceWeight};color:${serviceColor};font-size:13px;background:${rowBg};">${row.service}</td>
+        <td style="padding:14px 18px;border-bottom:1px solid #f0f0f7;color:#6b7280;font-size:13px;background:${rowBg};">${row.description}</td>
+        <td style="padding:14px 18px;border-bottom:1px solid #f0f0f7;text-align:right;color:#374151;font-size:13px;background:${rowBg};">Rs.${Math.round(row.rate).toLocaleString('en-IN')}</td>
+        <td style="padding:14px 18px;border-bottom:1px solid #f0f0f7;text-align:right;color:#374151;font-size:13px;background:${rowBg};">${row.qty}</td>
+        <td style="padding:14px 18px;border-bottom:1px solid #f0f0f7;text-align:right;font-weight:600;color:#1a1a2e;font-size:13px;background:${rowBg};">Rs.${Math.round(row.amount).toLocaleString('en-IN')}</td>
       </tr>
     `
   }).join('')
@@ -296,7 +417,15 @@ const sendOrderConfirmationEmail = async (email, order) => {
   const orderNumber = `ORD-${order._id.toString().slice(-6).toUpperCase()}`
   const invoiceDate = new Date(order.updatedAt || Date.now()).toLocaleDateString('en-IN')
   const taxAmount = order.taxAmount || 0
-  const subtotal = order.items.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0)
+  const packageSubtotal = orderPackageSubtotal(order)
+  const addonsSubtotal = orderAddonsSubtotal(order)
+  const subtotal = orderItemsSubtotal(order)
+  const addonsSubtotalRow = addonsSubtotal > 0
+    ? `<tr style="background:#f8f4ff;border-top:1px solid #ede9fe;">
+        <td style="padding:10px 16px;font-size:13px;color:#6b7280;">Add-ons subtotal</td>
+        <td style="padding:10px 16px;font-size:13px;color:#374151;text-align:right;font-weight:600;">Rs.${addonsSubtotal.toLocaleString('en-IN')}</td>
+      </tr>`
+    : ''
 
   const pdfBuffer = await generateInvoicePDF(order)
 
@@ -439,6 +568,11 @@ const sendOrderConfirmationEmail = async (email, order) => {
                   <td width="45%">
                     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:10px;overflow:hidden;border:1px solid #ede9fe;">
                       <tr style="background:#f8f4ff;">
+                        <td style="padding:10px 16px;font-size:13px;color:#6b7280;">Package subtotal</td>
+                        <td style="padding:10px 16px;font-size:13px;color:#374151;text-align:right;font-weight:600;">Rs.${packageSubtotal.toLocaleString('en-IN')}</td>
+                      </tr>
+                      ${addonsSubtotalRow}
+                      <tr style="background:#f8f4ff;border-top:1px solid #ede9fe;">
                         <td style="padding:10px 16px;font-size:13px;color:#6b7280;">Sub Total</td>
                         <td style="padding:10px 16px;font-size:13px;color:#374151;text-align:right;font-weight:600;">Rs.${subtotal.toLocaleString('en-IN')}</td>
                       </tr>
@@ -526,14 +660,19 @@ const sendOrderNotificationToSuperAdmin = async (superAdminEmail, order) => {
   const { street, city, state, zipCode, country } = order.shippingAddress || {}
   const addressLine = [street, city, state, zipCode, country].filter(Boolean).join(', ')
 
-  const itemRows = order.items.map(item => `
+  const itemRows = buildInvoiceRows(order).map((row) => {
+    const label = row.type === 'addon'
+      ? `${row.service}${row.description && row.description !== 'Customization' ? ` (${row.description})` : ''}`
+      : row.service
+    return `
     <tr>
-      <td style="padding:8px;border:1px solid #ddd">${item.product?.name || 'Product'}</td>
-      <td style="padding:8px;border:1px solid #ddd;text-align:center">${item.quantity}</td>
-      <td style="padding:8px;border:1px solid #ddd;text-align:right">Rs.${item.price.toLocaleString('en-IN')}</td>
-      <td style="padding:8px;border:1px solid #ddd;text-align:right">Rs.${(item.price * item.quantity).toLocaleString('en-IN')}</td>
+      <td style="padding:8px;border:1px solid #ddd">${label}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:center">${row.qty}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:right">Rs.${Math.round(row.rate).toLocaleString('en-IN')}</td>
+      <td style="padding:8px;border:1px solid #ddd;text-align:right">Rs.${Math.round(row.amount).toLocaleString('en-IN')}</td>
     </tr>
-  `).join('')
+  `
+  }).join('')
 
   const pdfBuffer = await generateInvoicePDF(order)
 
