@@ -4,6 +4,7 @@ const userController = require('../controllers/user-controller')
 const paymentController = require('../controllers/payment-controller')
 const { wrapUpload } = require('../middleware/multer-upload-error')
 const upload = require('../../configuration/multer-config')
+const { uploadNoWatermark } = require('../../configuration/multer-config')
 const router = express.Router()
 //registration otp
 router.post('/send-otp', userController.sendOTP)
@@ -73,9 +74,9 @@ router.get('/main-categories', userController.getAllMainCategories)
 //birthday packages grouped by city
 router.get('/birthday-packages-by-city', userController.getBirthdayPackagesByCity)
 //write review
-router.post('/write-review', isLoggedIn, upload.array('images', 5), userController.writeReview)
+router.post('/write-review', isLoggedIn, uploadNoWatermark.array('images', 5), userController.writeReview)
 //write venue review
-router.post('/venue/:venueId/review', isLoggedIn, wrapUpload(upload.array('images', 5)), userController.writeVenueReview)
+router.post('/venue/:venueId/review', isLoggedIn, wrapUpload(uploadNoWatermark.array('images', 5)), userController.writeVenueReview)
 //edit venue review
 router.put('/venue-review/:reviewId', isLoggedIn, userController.editVenueReview)
 //delete venue review

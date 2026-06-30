@@ -75,6 +75,34 @@ if (hasCloudinary) {
 const upload = multer({ storage, fileFilter })
 
 /**
+ * Upload instance WITHOUT watermark — used for review images and additional-category banners.
+ */
+let noWatermarkStorage
+
+if (hasCloudinary) {
+  const cloudinary = require('cloudinary').v2
+  const { CloudinaryStorage } = require('multer-storage-cloudinary')
+
+  noWatermarkStorage = new CloudinaryStorage({
+    cloudinary,
+    params: (req, file) => {
+      const isSvg = file.mimetype === 'image/svg+xml'
+      return {
+        folder: 'dkgpro',
+        resource_type: isSvg ? 'raw' : 'image',
+        format: isSvg ? 'svg' : undefined,
+        allowed_formats: isSvg ? undefined : ['jpg', 'jpeg', 'png', 'webp'],
+        transformation: [] // no watermark
+      }
+    }
+  })
+} else {
+  noWatermarkStorage = diskStorage
+}
+
+const uploadNoWatermark = multer({ storage: noWatermarkStorage, fileFilter })
+
+/**
  * Public URL or path to persist (Cloudinary secure_url vs /uploads/... for disk).
  */
 function getStoredFileUrl(file) {
@@ -94,5 +122,7 @@ function getStoredFileUrl(file) {
 }
 
 upload.getStoredFileUrl = getStoredFileUrl
+uploadNoWatermark.getStoredFileUrl = getStoredFileUrl
 
 module.exports = upload
+module.exports.uploadNoWatermark = uploadNoWatermark

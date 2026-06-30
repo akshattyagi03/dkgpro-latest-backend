@@ -3,6 +3,7 @@ const adminController = require('../controllers/admin-controller')
 const { isAdmin } = require('../middleware/auth')
 const { wrapUpload } = require('../middleware/multer-upload-error')
 const upload = require('../../configuration/multer-config')
+const { uploadNoWatermark } = require('../../configuration/multer-config')
 const router = express.Router()
 //send otp for registration
 router.post('/send-otp', adminController.sendOTP)
@@ -78,7 +79,7 @@ router.patch("/corporate-bookings/:contactId/status", isAdmin, adminController.u
 //logout admin
 router.get("/logout", isAdmin, adminController.logout)
 //create additional category 
-router.post("/create-additional-category", isAdmin, wrapUpload(upload.single('bannerImage')), adminController.createAdditionalCategory)
+router.post("/create-additional-category", isAdmin, wrapUpload(uploadNoWatermark.single('bannerImage')), adminController.createAdditionalCategory)
 //add hero section banner
 router.post("/add-hero-section-banner", isAdmin, wrapUpload(upload.single('image')), adminController.addHeroBanner)
 module.exports = router
