@@ -24,6 +24,7 @@ router.post('/login', userController.login)
 router.get('/home', userController.home)
 router.get('/corporate-page', userController.getCorporatePage)
 router.post('/corporate-booking', userController.submitCorporateBooking)
+router.get('/service-page/:serviceKey', userController.getServicePage)
 //featured products 
 router.get('/featured', userController.featuredProducts)
 //premium products

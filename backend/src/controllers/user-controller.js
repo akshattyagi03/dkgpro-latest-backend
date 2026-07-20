@@ -45,6 +45,7 @@ const {
   getBlogBySlug
 } = require('../services/user-services')
 const { getCorporatePage, submitCorporateBooking } = require('../services/corporate-page-service')
+const { getServicePage } = require('../services/service-page-service')
 const { HTTP_STATUS } = require('../utils/constants')
 
 const sendOTP = async (req, res) => {
@@ -569,6 +570,20 @@ const submitCorporateBookingController = async (req, res) => {
   }
 }
 
+const getServicePageController = async (req, res) => {
+  try {
+    const result = await getServicePage(req.params.serviceKey)
+    res.status(HTTP_STATUS.OK).json(result)
+  } catch (error) {
+    const msg = error.message || 'Failed to load service page'
+    const status =
+      msg === 'Invalid service page' || msg === 'Service page is not available'
+        ? HTTP_STATUS.NOT_FOUND || 404
+        : HTTP_STATUS.BAD_REQUEST
+    res.status(status).json({ message: msg })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -580,6 +595,7 @@ module.exports = {
   home,
   getCorporatePage: getCorporatePageController,
   submitCorporateBooking: submitCorporateBookingController,
+  getServicePage: getServicePageController,
   featuredProducts,
   premiumProducts,
   getProductsByCategory: getProductsByCategoryController,

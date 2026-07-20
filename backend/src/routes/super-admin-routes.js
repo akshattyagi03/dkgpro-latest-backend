@@ -55,6 +55,32 @@ router.get("/inquiries", isSuperAdmin, superAdminController.getInquiries)
 //corporate event booking leads (from guest /corporate-events form)
 router.get("/corporate-bookings", isSuperAdmin, superAdminController.getCorporateBookings)
 router.patch("/corporate-bookings/:contactId/status", isSuperAdmin, superAdminController.updateCorporateBookingStatus)
+// product-detail service pages
+router.get("/service-pages", isSuperAdmin, superAdminController.listServicePages)
+router.get("/service-pages/:serviceKey", isSuperAdmin, superAdminController.getServicePageAdmin)
+router.put(
+  "/service-pages/:serviceKey",
+  isSuperAdmin,
+  wrapUpload(upload.single('heroImage')),
+  superAdminController.updateServicePage
+)
+router.post(
+  "/service-pages/:serviceKey/items",
+  isSuperAdmin,
+  wrapUpload(upload.single('image')),
+  superAdminController.addServicePageItem
+)
+router.put(
+  "/service-pages/:serviceKey/items/:itemId",
+  isSuperAdmin,
+  wrapUpload(upload.single('image')),
+  superAdminController.updateServicePageItem
+)
+router.delete(
+  "/service-pages/:serviceKey/items/:itemId",
+  isSuperAdmin,
+  superAdminController.deleteServicePageItem
+)
 //orders (platform-wide, read-only list/detail)
 router.get("/orders", isSuperAdmin, superAdminController.getOrders)
 router.get("/orders/:orderId", isSuperAdmin, superAdminController.getOrderById)

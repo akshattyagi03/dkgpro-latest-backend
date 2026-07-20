@@ -41,6 +41,14 @@ const {
 } = require('../services/admin-services')
 
 const multerUpload = require('../../configuration/multer-config')
+const {
+  listServicePages,
+  getServicePageAdmin,
+  updateServicePage,
+  addServicePageItem,
+  updateServicePageItem,
+  deleteServicePageItem,
+} = require('../services/service-page-service')
 
 const sendOTP = async (req, res) => {
   try {
@@ -508,6 +516,69 @@ const putHomeProductSection = async (req, res) => {
   }
 }
 
+const listServicePagesController = async (req, res) => {
+  try {
+    const pages = await listServicePages()
+    res.status(200).json({ pages })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const getServicePageAdminController = async (req, res) => {
+  try {
+    const page = await getServicePageAdmin(req.params.serviceKey)
+    res.status(200).json({ page })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const updateServicePageController = async (req, res) => {
+  try {
+    const heroImage = req.file ? multerUpload.getStoredFileUrl(req.file) : undefined
+    const page = await updateServicePage(req.params.serviceKey, req.body, heroImage)
+    res.status(200).json({ message: 'Service page updated', page })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const addServicePageItemController = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'Item image is required' })
+    const imageUrl = multerUpload.getStoredFileUrl(req.file)
+    const page = await addServicePageItem(req.params.serviceKey, req.body, imageUrl)
+    res.status(201).json({ message: 'Item added', page })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const updateServicePageItemController = async (req, res) => {
+  try {
+    const imageUrl = req.file ? multerUpload.getStoredFileUrl(req.file) : undefined
+    const page = await updateServicePageItem(
+      req.params.serviceKey,
+      req.params.itemId,
+      req.body,
+      imageUrl
+    )
+    res.status(200).json({ message: 'Item updated', page })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+const deleteServicePageItemController = async (req, res) => {
+  try {
+    const page = await deleteServicePageItem(req.params.serviceKey, req.params.itemId)
+    res.status(200).json({ message: 'Item deleted', page })
+  } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
 module.exports = {
   sendOTP,
   verifyOTP,
@@ -548,5 +619,11 @@ module.exports = {
   deleteAdditionalCategory,
   addHeroSectionBanner,
   getHomeProductSections,
-  putHomeProductSection
+  putHomeProductSection,
+  listServicePages: listServicePagesController,
+  getServicePageAdmin: getServicePageAdminController,
+  updateServicePage: updateServicePageController,
+  addServicePageItem: addServicePageItemController,
+  updateServicePageItem: updateServicePageItemController,
+  deleteServicePageItem: deleteServicePageItemController,
 }
