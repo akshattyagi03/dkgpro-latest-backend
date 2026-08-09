@@ -22,7 +22,7 @@ const defaultOrigins = [
   'http://127.0.0.1:8080',
   'https://dkgpro.in',
   'https://www.dkgpro.in',
-  'https://dkg-pro-admin.vercel.app',
+  'https://dkgpro-admin.vercel.app',
 ]
 const envOrigins = (process.env.CORS_ORIGINS || '')
   .split(',')
