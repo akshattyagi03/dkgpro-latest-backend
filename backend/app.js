@@ -104,8 +104,8 @@ app.post("/login", async (req, res)=>{
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
         }).save()
 
-        res.cookie('accessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
-        res.cookie('refreshToken', refreshTokenValue, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+        res.cookie('accessToken', accessToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', maxAge: 15 * 60 * 1000 })
+        res.cookie('refreshToken', refreshTokenValue, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 })
 
         const Product = require('./src/models/product-model')
         const cart = await Cart.findOne({ user: user._id }).populate('items.product')

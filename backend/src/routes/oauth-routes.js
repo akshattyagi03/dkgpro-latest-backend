@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
 const User = require('../models/user-model')
 const RefreshToken = require('../models/refresh-token-model')
+const { accessTokenOptions, refreshTokenOptions } = require('../utils/cookie-options')
 
 const router = express.Router()
 
@@ -68,8 +69,8 @@ router.get('/google/callback', async (req, res) => {
 
     const { accessToken, refreshToken } = await generateTokens(user._id)
 
-    res.cookie('accessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
-    res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+    res.cookie('accessToken', accessToken, accessTokenOptions)
+    res.cookie('refreshToken', refreshToken, refreshTokenOptions)
 
     // Redirect to frontend after login (?login=success lets guest app hydrate session)
     const successBase = (process.env.GOOGLE_LOGIN_SUCCESS_REDIRECT || 'http://localhost:3000').replace(/\/$/, '')

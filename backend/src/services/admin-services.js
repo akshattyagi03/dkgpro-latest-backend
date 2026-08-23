@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken')
 const { generateOTP } = require('../utils/otp-generator')
 const { sendOTP } = require('../utils/email-service')
 const { sendSMSOTP } = require('../utils/sms-service')
+const { accessTokenOptions, refreshTokenOptions } = require('../utils/cookie-options')
 
 const generateAdminTokens = async (adminId) => {
   const accessToken = jwt.sign(
@@ -106,8 +107,8 @@ const loginAdmin = async (adminData, res) => {
 
   const { accessToken, refreshToken } = await generateAdminTokens(admin._id)
 
-  res.cookie('adminAccessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
-  res.cookie('adminRefreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+  res.cookie('adminAccessToken', accessToken, accessTokenOptions)
+  res.cookie('adminRefreshToken', refreshToken, refreshTokenOptions)
 
   return { admin: { id: admin._id, fullName: admin.fullName, email } }
 }
@@ -1001,8 +1002,8 @@ const verifyAdminPhoneLogin = async (userData, res) => {
 
   const { accessToken, refreshToken } = await generateAdminTokens(admin._id)
 
-  res.cookie('adminAccessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
-  res.cookie('adminRefreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+  res.cookie('adminAccessToken', accessToken, accessTokenOptions)
+  res.cookie('adminRefreshToken', refreshToken, refreshTokenOptions)
 
   return { admin: { id: admin._id, fullName: admin.fullName, email: admin.email, phoneNumber: admin.phoneNumber } }
 }

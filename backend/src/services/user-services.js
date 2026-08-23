@@ -8,6 +8,7 @@ const bcrypt = require('bcryptjs')
 const { generateOTP } = require('../utils/otp-generator')
 const { sendOTP } = require('../utils/email-service')
 const { sendSMSOTP } = require('../utils/sms-service')
+const { accessTokenOptions, refreshTokenOptions } = require('../utils/cookie-options')
 
 const generateTokens = async (userId) => {
   const accessToken = jwt.sign(
@@ -68,8 +69,8 @@ const verifyUserOTP = async (userData, res) => {
 
   const { accessToken, refreshToken } = await generateTokens(user._id)
 
-  res.cookie('accessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
-  res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+  res.cookie('accessToken', accessToken, accessTokenOptions)
+  res.cookie('refreshToken', refreshToken, refreshTokenOptions)
 
   return { user: { id: user._id, fullName, email } }
 }
@@ -84,8 +85,8 @@ const loginUser = async (userData, res) => {
 
   const { accessToken, refreshToken } = await generateTokens(user._id)
 
-  res.cookie('accessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
-  res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+  res.cookie('accessToken', accessToken, accessTokenOptions)
+  res.cookie('refreshToken', refreshToken, refreshTokenOptions)
 
   return { user: { id: user._id, fullName: user.fullName, email } }
 }
@@ -537,8 +538,8 @@ const verifyPhoneLogin = async (userData, res) => {
 
   const { accessToken, refreshToken } = await generateTokens(user._id)
 
-  res.cookie('accessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
-  res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+  res.cookie('accessToken', accessToken, accessTokenOptions)
+  res.cookie('refreshToken', refreshToken, refreshTokenOptions)
 
   return { user: { id: user._id, fullName: user.fullName, email: user.email, phoneNumber: user.phoneNumber } }
 }

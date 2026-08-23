@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken')
 const User = require('../models/user-model')
 const Admin = require('../models/admin-model')
 const SuperAdmin = require('../models/super-admin-model')
+const { accessTokenOptions } = require('../utils/cookie-options')
 
 const isLoggedIn = async (req, res, next) => {
   try {
@@ -29,7 +30,7 @@ const isLoggedIn = async (req, res, next) => {
         const decoded = jwt.verify(newAccessToken, process.env.JWT_SECRET_KEY)
         const user = await User.findById(decoded.userId)
         if (user) {
-          res.cookie('accessToken', newAccessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
+          res.cookie('accessToken', newAccessToken, accessTokenOptions)
           req.user = user
           return next()
         }
@@ -71,7 +72,7 @@ const isAdmin = async (req, res, next) => {
         const admin = await Admin.findById(decoded.adminId)
         
         if (admin && admin.isApproved) {
-          res.cookie('adminAccessToken', newAccessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
+          res.cookie('adminAccessToken', newAccessToken, accessTokenOptions)
           req.admin = admin
           return next()
         }
@@ -112,7 +113,7 @@ const isSuperAdmin = async (req, res, next) => {
         const superAdmin = await SuperAdmin.findById(decoded.superAdminId)
         
         if (superAdmin) {
-          res.cookie('superAdminAccessToken', newAccessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
+          res.cookie('superAdminAccessToken', newAccessToken, accessTokenOptions)
           req.superAdmin = superAdmin
           return next()
         }

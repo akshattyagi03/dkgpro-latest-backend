@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken')
 const { generateOTP } = require('../utils/otp-generator')
 const { sendOTP } = require('../utils/email-service')
 const { sendSMSOTP } = require('../utils/sms-service')
+const { accessTokenOptions, refreshTokenOptions } = require('../utils/cookie-options')
 
 const generateSuperAdminTokens = async (superAdminId) => {
   const accessToken = jwt.sign(
@@ -65,8 +66,8 @@ const verifySuperAdminOTP = async (superAdminData, res) => {
 
   const { accessToken, refreshToken } = await generateSuperAdminTokens(superAdmin._id)
   
-  res.cookie('superAdminAccessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
-  res.cookie('superAdminRefreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+  res.cookie('superAdminAccessToken', accessToken, accessTokenOptions)
+  res.cookie('superAdminRefreshToken', refreshToken, refreshTokenOptions)
   
   return { superAdmin: { id: superAdmin._id, fullName, email } }
 }
@@ -81,8 +82,8 @@ const loginSuperAdmin = async (superAdminData, res) => {
 
   const { accessToken, refreshToken } = await generateSuperAdminTokens(superAdmin._id)
   
-  res.cookie('superAdminAccessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
-  res.cookie('superAdminRefreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+  res.cookie('superAdminAccessToken', accessToken, accessTokenOptions)
+  res.cookie('superAdminRefreshToken', refreshToken, refreshTokenOptions)
   
   return { superAdmin: { id: superAdmin._id, fullName: superAdmin.fullName, email } }
 }
@@ -542,8 +543,8 @@ const verifySuperAdminPhoneLogin = async (superAdminData, res) => {
   
   const { accessToken, refreshToken } = await generateSuperAdminTokens(superAdmin._id)
   
-  res.cookie('superAdminAccessToken', accessToken, { httpOnly: true, secure: false, maxAge: 15 * 60 * 1000 })
-  res.cookie('superAdminRefreshToken', refreshToken, { httpOnly: true, secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 })
+  res.cookie('superAdminAccessToken', accessToken, accessTokenOptions)
+  res.cookie('superAdminRefreshToken', refreshToken, refreshTokenOptions)
   
   return { superAdmin: { id: superAdmin._id, fullName: superAdmin.fullName, email: superAdmin.email, phoneNumber: superAdmin.phoneNumber } }
 }
