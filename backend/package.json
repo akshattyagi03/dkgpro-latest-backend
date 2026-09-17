@@ -3,6 +3,9 @@
   "scripts": {
     "dev": "npx nodemon server.js",
     "seed:categories": "node fullCategorySeed.js",
+    "seed:kids-themes": "node seedKidsThemeAdditionalCategories.js",
+    "seed:digital-gift-card": "node seedDigitalGiftCardCategory.js && node seedDigitalGiftCardProducts.js",
+    "seed:digital-gift-card-products": "node seedDigitalGiftCardProducts.js",
     "seed:dummy": "node dummyContentSeed.js",
     "seed:addons": "node seed-addon.js",
     "seed:test-products": "node testProductsSeed.js",

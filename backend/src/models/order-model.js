@@ -54,7 +54,9 @@ const orderSchema = new mongoose.Schema({
     city: String,
     state: String,
     zipCode: String,
-    country: String
+    country: String,
+    phoneNumber: String,
+    alternatePhoneNumber: String
   },
   timing: String,
   razorpayOrderId: String,

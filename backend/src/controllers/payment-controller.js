@@ -10,6 +10,12 @@ const createOrderController = async (req, res) => {
         message: 'Shipping address is required'
       });
     }
+    const phone = String(shippingAddress.phoneNumber || shippingAddress.phone || '').trim();
+    if (!phone || phone.replace(/\D/g, '').length < 10) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        message: 'A valid phone number is required'
+      });
+    }
 
     if (!cartSnapshot && (!totalAmount || Number(totalAmount) <= 0)) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({

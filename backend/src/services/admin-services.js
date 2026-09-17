@@ -139,9 +139,16 @@ const addProducts = async (productData, adminId) => {
     cancellationPolicy,
     tags,
     inclusions,
+    exclusions,
     experiences,
     keyHighlights,
-    balloonColorSelection
+    balloonColorSelection,
+    giftCardSelection,
+    location,
+    setupDuration,
+    teamSize,
+    advanceBooking,
+    youtubeVideoLink,
   } = productData
 
   if (discountedPrice && Number(discountedPrice) >= Number(price)) {
@@ -224,12 +231,18 @@ const addProducts = async (productData, adminId) => {
     serviceableAreas: serviceableAreas || [],
     cancellationPolicy: cancellationPolicy || undefined,
     tags: tags || [],
+    location: location || undefined,
+    setupDuration: setupDuration || undefined,
+    teamSize: teamSize || undefined,
+    advanceBooking: advanceBooking || undefined,
+    youtubeVideoLink: typeof youtubeVideoLink === 'string' ? youtubeVideoLink.trim() : undefined,
 
-    // ✅ ADD THESE
     inclusions: inclusions || [],
+    exclusions: exclusions || [],
     experiences: experiences || [],
     keyHighlights: keyHighlights || [],
     balloonColorSelection: balloonColorSelection || undefined,
+    giftCardSelection: giftCardSelection || undefined,
   })
 
   await product.save()
@@ -729,15 +742,22 @@ const logoutAdmin = async (refreshTokenValue) => {
 
 const addVenue = async (venueData, adminId) => {
   const Venue = require('../models/venue-model')
+  const { canonicalizeServiceCity } = require('../utils/cityMatch')
   const {
     name, location, images, description, capacity,
     startingPrice, typesOfVenues, accessibilityFeatures,
     facilities, restrictions, otherInformation, supportedEvents
   } = venueData
 
+  const loc = location && typeof location === 'object' ? { ...location } : location
+  if (loc && typeof loc === 'object') {
+    const inferred = canonicalizeServiceCity(loc.city, loc.address)
+    if (inferred) loc.city = inferred
+  }
+
   const venue = new Venue({
     name,
-    location,
+    location: loc,
     images: images || [],
     description,
     capacity,
@@ -1013,7 +1033,7 @@ const addHeroBanner = async (bannerData, attribution = {}) => {
   const SubCategory = require('../models/sub-category-model')
   const ThirdCategory = require('../models/third-category-model')
 
-  const { image, subCategory, thirdCategory, placement, sortOrder, title } = bannerData
+  const { image, subCategory, thirdCategory, placement, sortOrder, title, description } = bannerData
 
   const adminId =
     attribution && typeof attribution === 'object' && 'adminId' in attribution
@@ -1058,7 +1078,10 @@ const addHeroBanner = async (bannerData, attribution = {}) => {
     ...(superAdminId ? { addedBySuperAdmin: superAdminId } : {}),
     placement: placementVal,
     sortOrder: sortOrderSafe,
-    ...(title != null && String(title).trim() !== '' ? { title: String(title).trim() } : {})
+    ...(title != null && String(title).trim() !== '' ? { title: String(title).trim() } : {}),
+    ...(description != null && String(description).trim() !== ''
+      ? { description: String(description).trim() }
+      : {})
   }
 
   if (subCategory) {

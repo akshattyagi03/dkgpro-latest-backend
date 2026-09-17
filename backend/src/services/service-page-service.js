@@ -54,6 +54,11 @@ function serializeProductCard(product) {
     discountedPrice: product.discountedPrice ?? null,
     image,
     href: `/product/${encodeURIComponent(id)}`,
+    tier: product.tier === 'premium' ? 'premium' : 'standard',
+    isFeatured: product.isFeatured === true,
+    createdAt: product.createdAt || null,
+    averageRating: product.averageRating || 0,
+    numReviews: product.numReviews || 0,
   }
 }
 

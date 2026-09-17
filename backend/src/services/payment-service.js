@@ -3,6 +3,7 @@ const Order = require('../models/order-model');
 const Cart = require('../models/cart-model');
 const crypto = require('crypto');
 const { syncCheckoutCart } = require('./user-services');
+const { resolveGiftCardUnitPrice } = require('../utils/giftCardPrice');
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -31,11 +32,38 @@ function addonsSum(lines) {
   return lines.reduce((s, x) => s + (Number(x.lineTotal) || 0), 0);
 }
 
-const createOrder = async (userId, orderData) => {
-  const { totalAmount: clientTotalRaw, shippingAddress, cartSnapshot, timing } = orderData;
+function normalizeShippingAddress(addr) {
+  if (!addr || typeof addr !== 'object') return null;
+  const street = String(addr.street || '').trim();
+  const city = String(addr.city || '').trim();
+  const state = String(addr.state || '').trim();
+  const zipCode = String(addr.zipCode || '').trim();
+  const country = String(addr.country || 'India').trim() || 'India';
+  const phoneNumber = String(addr.phoneNumber || addr.phone || '').trim();
+  const alternatePhoneNumber = String(
+    addr.alternatePhoneNumber || addr.alternatePhone || ''
+  ).trim();
+  if (!street || !city || !state || !zipCode || !phoneNumber) return null;
+  const digits = phoneNumber.replace(/\D/g, '');
+  if (digits.length < 10) return null;
+  if (alternatePhoneNumber && alternatePhoneNumber.replace(/\D/g, '').length < 10) return null;
+  return {
+    street,
+    city,
+    state,
+    zipCode,
+    country,
+    phoneNumber,
+    ...(alternatePhoneNumber ? { alternatePhoneNumber } : {}),
+  };
+}
 
+const createOrder = async (userId, orderData) => {
+  const { totalAmount: clientTotalRaw, shippingAddress: rawShippingAddress, cartSnapshot, timing } = orderData;
+
+  const shippingAddress = normalizeShippingAddress(rawShippingAddress);
   if (!shippingAddress) {
-    throw new Error('Shipping address is required');
+    throw new Error('Shipping address and a valid phone number are required');
   }
 
   if (cartSnapshot) {
@@ -60,9 +88,14 @@ const createOrder = async (userId, orderData) => {
   if (cartSnapshot) {
     totalAmount = 0;
     for (const item of validItems) {
-      const unit = effectiveUnitPrice(item.product);
+      const sizeUnit = resolveGiftCardUnitPrice(
+        item.product,
+        item.bookingDetails?.giftCardChoice
+      )
+      const unit = sizeUnit != null ? sizeUnit : effectiveUnitPrice(item.product);
       const addOnTotal = addonsSum(item.bookingAddonLines);
       totalAmount += unit * item.quantity + addOnTotal;
+      const giftChoice = item.bookingDetails?.giftCardChoice
       orderItems.push({
         product: item.product._id,
         quantity: item.quantity,
@@ -87,6 +120,14 @@ const createOrder = async (userId, orderData) => {
                 mode: item.bookingDetails.balloonColorChoice.mode,
                 label: item.bookingDetails.balloonColorChoice.label,
                 colors: item.bookingDetails.balloonColorChoice.colors
+              }
+              : undefined,
+            giftCardChoice: giftChoice
+              ? {
+                babyName: giftChoice.babyName,
+                whichBirthday: giftChoice.whichBirthday,
+                size: giftChoice.size,
+                sizePrice: sizeUnit != null ? sizeUnit : giftChoice.sizePrice
               }
               : undefined
           }

@@ -263,9 +263,9 @@ const editProduct = async (productId, updateData) => {
     'images', 'isFeatured', 'tier', 'serviceableAreas',
     'location', 'setupDuration', 'teamSize', 'advanceBooking',
     'cancellationPolicy', 'youtubeVideoLink',
-    'inclusions', 'experiences', 'keyHighlights',
+    'inclusions', 'exclusions', 'experiences', 'keyHighlights',
     'customizationSections', 'additionalCategories', 'tags',
-    'balloonColorSelection'
+    'balloonColorSelection', 'giftCardSelection'
   ]
 
   const update = {}
@@ -391,6 +391,12 @@ const updateVenue = async (venueId, updateData) => {
   parseIfString('supportedEvents')
 
   if (update.startingPrice !== undefined) update.startingPrice = Number(update.startingPrice)
+
+  if (update.location && typeof update.location === 'object') {
+    const { canonicalizeServiceCity } = require('../utils/cityMatch')
+    const inferred = canonicalizeServiceCity(update.location.city, update.location.address)
+    if (inferred) update.location.city = inferred
+  }
 
   const venue = await Venue.findByIdAndUpdate(venueId, update, { new: true })
   if (!venue) throw new Error('Venue not found')

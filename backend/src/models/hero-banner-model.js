@@ -36,6 +36,11 @@ const heroBannerSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  /** Optional card body copy; guest falls back to product text or a title map. */
+  description: {
+    type: String,
+    default: null
+  },
   /** Where this banner appears on the guest home page (admin upload). */
   placement: {
     type: String,

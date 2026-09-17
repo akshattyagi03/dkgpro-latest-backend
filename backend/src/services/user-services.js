@@ -222,20 +222,19 @@ const getProfileService = async (userId) => {
   };
 };
 
+const {
+  buildProductCityFilter,
+  buildVenueCityFilter,
+  buildBlogCityFilter,
+} = require('../utils/cityMatch')
+
 /**
  * Build a Mongo filter that matches a product whose `serviceableAreas.city`
- * includes the given city. Returns `{}` when city is empty/"across-india"
- * so callers can spread the result unconditionally.
+ * (or location label) belongs to the selected city/metro, including aliases
+ * such as Delhi → Greater Noida / Noida / Gurugram.
+ * Returns `{}` when city is empty/"across-india".
  */
-const buildCityFilter = (city) => {
-  if (!city || typeof city !== 'string') return {}
-  const trimmed = city.trim()
-  if (!trimmed) return {}
-  if (/^across[\s-]*india$/i.test(trimmed)) return {}
-  // Escape regex specials for safe partial match (e.g. "Delhi NCR")
-  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return { 'serviceableAreas.city': { $regex: escaped, $options: 'i' } }
-}
+const buildCityFilter = (city) => buildProductCityFilter(city)
 
 /** Safe partial text match on product name / description / tags (no user-controlled regex operators). */
 const buildProductTextSearchCondition = (rawQ) => {
@@ -382,7 +381,7 @@ const getProductsByCity = async (city, page = 1, limit = 10) => {
   const pageNum = parseInt(page) || 1
   const limitNum = Math.min(parseInt(limit) || 10, 50)
   const skip = (pageNum - 1) * limitNum
-  const query = { 'serviceableAreas.city': { $regex: city, $options: 'i' } }
+  const query = buildCityFilter(city)
 
   const products = await Product.find(query)
     .skip(skip)
@@ -775,6 +774,7 @@ const getSearchSuggestions = async (rawQ, city, limit = 8) => {
  */
 const normalizeBookingDetails = (raw) => {
   if (!raw || typeof raw !== 'object') return undefined
+  const { parsePositivePrice } = require('../utils/giftCardPrice')
   const pincode = String(raw.pincode || '').trim().slice(0, 12)
   const district = raw.district != null ? String(raw.district).trim().slice(0, 120) : undefined
   const bookingDate = String(raw.bookingDate || '').trim().slice(0, 32)
@@ -792,7 +792,24 @@ const normalizeBookingDetails = (raw) => {
     balloonColorChoice = { mode, label, ...(colors?.length ? { colors } : {}) }
   }
 
-  if (!pincode && !bookingDate && !balloonColorChoice) return undefined
+  let giftCardChoice
+  const gc = raw.giftCardChoice
+  if (gc && typeof gc === 'object') {
+    const babyName = String(gc.babyName || '').trim().slice(0, 120)
+    const whichBirthday = String(gc.whichBirthday || '').trim().slice(0, 80)
+    const size = String(gc.size || '').trim().slice(0, 120)
+    const sizePrice = parsePositivePrice(gc.sizePrice)
+    if (babyName || whichBirthday || size) {
+      giftCardChoice = {
+        ...(babyName ? { babyName } : {}),
+        ...(whichBirthday ? { whichBirthday } : {}),
+        ...(size ? { size } : {}),
+        ...(sizePrice != null ? { sizePrice } : {}),
+      }
+    }
+  }
+
+  if (!pincode && !bookingDate && !balloonColorChoice && !giftCardChoice) return undefined
 
   return {
     ...(pincode ? { pincode } : {}),
@@ -801,6 +818,7 @@ const normalizeBookingDetails = (raw) => {
     ...(startTime ? { startTime } : {}),
     ...(endTime ? { endTime } : {}),
     ...(balloonColorChoice ? { balloonColorChoice } : {}),
+    ...(giftCardChoice ? { giftCardChoice } : {}),
   }
 }
 
@@ -821,7 +839,7 @@ const syncCheckoutCart = async (userId, rawItems) => {
   for (const row of rawItems) {
     const productId = row.productId
     if (!productId) throw new Error('Each item needs productId')
-    const product = await Product.findById(productId)
+    const product = await Product.findById(productId).populate('thirdCategory')
     if (!product) throw new Error('Product not found')
     let quantity = parseInt(row.quantity, 10)
     if (!Number.isFinite(quantity) || quantity < 1) quantity = 1
@@ -840,6 +858,13 @@ const syncCheckoutCart = async (userId, rawItems) => {
       }
     }
     const bookingDetails = normalizeBookingDetails(row.bookingDetails)
+    if (bookingDetails?.giftCardChoice?.size) {
+      const { resolveGiftCardUnitPrice } = require('../utils/giftCardPrice')
+      const resolved = resolveGiftCardUnitPrice(product, bookingDetails.giftCardChoice)
+      if (resolved != null) {
+        bookingDetails.giftCardChoice.sizePrice = resolved
+      }
+    }
     newItems.push({
       product: product._id,
       quantity,
@@ -853,13 +878,39 @@ const syncCheckoutCart = async (userId, rawItems) => {
   return cart
 }
 
+const cartProductPopulate = {
+  path: 'items.product',
+  populate: [
+    { path: 'mainCategory' },
+    { path: 'subCategory' },
+    { path: 'thirdCategory' }
+  ]
+}
+
+const wishlistProductPopulate = {
+  path: 'products',
+  populate: [
+    { path: 'mainCategory' },
+    { path: 'subCategory' },
+    { path: 'thirdCategory' }
+  ]
+}
+
+function cartItemProductId(item) {
+  const p = item?.product
+  if (!p) return ''
+  if (typeof p === 'object' && p._id) return String(p._id)
+  return String(p)
+}
+
 const addToCart = async (userId, productId) => {
   const Cart = require('../models/cart-model')
   const Product = require('../models/product-model')
-  const MainCategory = require("../models/main-category-model");
-  const SubCategory = require("../models/sub-category-model");
-  const ThirdCategory = require("../models/third-category-model");
-  const product = await Product.findById(productId)
+  const id = String(productId || '').trim()
+  if (!id) {
+    throw new Error('Product id is required')
+  }
+  const product = await Product.findById(id)
   if (!product) {
     throw new Error('Product not found')
   }
@@ -870,31 +921,23 @@ const addToCart = async (userId, productId) => {
     cart = new Cart({ user: userId, items: [] })
   }
 
-  const existingItem = cart.items.find(item => item.product.toString() === productId)
+  const existingItem = cart.items.find((item) => cartItemProductId(item) === id)
 
   if (existingItem) {
     existingItem.quantity += 1
   } else {
-    cart.items.push({ product: productId, quantity: 1 })
+    cart.items.push({ product: id, quantity: 1 })
   }
 
   cart.totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0)
   await cart.save()
-
-  await cart.populate({
-    path: 'items.product',
-    populate: [
-      { path: 'mainCategory' },
-      { path: 'subCategory' },
-      { path: 'thirdCategory' }
-    ]
-  })
-
+  await cart.populate(cartProductPopulate)
   return cart
 }
 
 const removeFromCart = async (userId, productId) => {
   const Cart = require('../models/cart-model')
+  const id = String(productId || '').trim()
 
   const cart = await Cart.findOne({ user: userId })
 
@@ -902,47 +945,24 @@ const removeFromCart = async (userId, productId) => {
     throw new Error('Cart not found')
   }
 
-  cart.items = cart.items.filter(item => item.product.toString() !== productId)
+  cart.items = cart.items.filter((item) => cartItemProductId(item) !== id)
   cart.totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0)
 
   await cart.save()
-
-  await cart.populate({
-    path: 'items.product',
-    populate: [
-      { path: 'mainCategory' },
-      { path: 'subCategory' },
-      { path: 'thirdCategory' }
-    ]
-  })
-
+  await cart.populate(cartProductPopulate)
   return cart
 }
 
 const getCart = async (userId) => {
   const Cart = require('../models/cart-model')
-  const cart = await Cart.findOne({ user: userId }).populate({
-    path: 'items.product',
-    populate: [
-      { path: 'mainCategory' },
-      { path: 'subCategory' },
-      { path: 'thirdCategory' }
-    ]
-  })
+  const cart = await Cart.findOne({ user: userId }).populate(cartProductPopulate)
   if (!cart) return { items: [], totalItems: 0 }
   return cart
 }
 
 const getWishlist = async (userId) => {
   const Wishlist = require('../models/wishlist-model')
-  const wishlist = await Wishlist.findOne({ user: userId }).populate({
-    path: 'products',
-    populate: [
-      { path: 'mainCategory' },
-      { path: 'subCategory' },
-      { path: 'thirdCategory' }
-    ]
-  })
+  const wishlist = await Wishlist.findOne({ user: userId }).populate(wishlistProductPopulate)
   if (!wishlist) return { products: [], totalItems: 0 }
   return wishlist
 }
@@ -950,8 +970,12 @@ const getWishlist = async (userId) => {
 const addToWishlist = async (userId, productId) => {
   const Wishlist = require('../models/wishlist-model')
   const Product = require('../models/product-model')
+  const id = String(productId || '').trim()
+  if (!id) {
+    throw new Error('Product id is required')
+  }
 
-  const product = await Product.findById(productId)
+  const product = await Product.findById(id)
   if (!product) {
     throw new Error('Product not found')
   }
@@ -962,28 +986,20 @@ const addToWishlist = async (userId, productId) => {
     wishlist = new Wishlist({ user: userId, products: [] })
   }
 
-  if (wishlist.products.includes(productId)) {
+  if (wishlist.products.some((existing) => String(existing) === id)) {
     throw new Error('Product already in wishlist')
   }
 
-  wishlist.products.push(productId)
+  wishlist.products.push(id)
   wishlist.totalItems = wishlist.products.length
   await wishlist.save()
-
-  await wishlist.populate({
-    path: 'products',
-    populate: [
-      { path: 'mainCategory' },
-      { path: 'subCategory' },
-      { path: 'thirdCategory' }
-    ]
-  })
-
+  await wishlist.populate(wishlistProductPopulate)
   return wishlist
 }
 
 const removeFromWishlist = async (userId, productId) => {
   const Wishlist = require('../models/wishlist-model')
+  const id = String(productId || '').trim()
 
   const wishlist = await Wishlist.findOne({ user: userId })
 
@@ -991,20 +1007,11 @@ const removeFromWishlist = async (userId, productId) => {
     throw new Error('Wishlist not found')
   }
 
-  wishlist.products = wishlist.products.filter(id => id.toString() !== productId)
+  wishlist.products = wishlist.products.filter((existing) => String(existing) !== id)
   wishlist.totalItems = wishlist.products.length
 
   await wishlist.save()
-
-  await wishlist.populate({
-    path: 'products',
-    populate: [
-      { path: 'mainCategory' },
-      { path: 'subCategory' },
-      { path: 'thirdCategory' }
-    ]
-  })
-
+  await wishlist.populate(wishlistProductPopulate)
   return wishlist
 }
 
@@ -1126,19 +1133,7 @@ const getVenuesForUsers = async (page = 1, limit = 10, city = '', q = '') => {
   const limitNum = Math.min(parseInt(limit) || 10, 50)
   const skip = (pageNum - 1) * limitNum
 
-  const buildVenueCityFilter = (raw) => {
-    if (!raw || typeof raw !== 'string') return {}
-    const trimmed = raw.trim()
-    if (!trimmed) return {}
-    if (/^across[\s-]*india$/i.test(trimmed)) return {}
-    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    return {
-      $or: [
-        { 'location.city': { $regex: escaped, $options: 'i' } },
-        { 'location.address': { $regex: escaped, $options: 'i' } }
-      ]
-    }
-  }
+  const venueCityFilter = (raw) => buildVenueCityFilter(raw)
 
   const buildVenueTextSearchCondition = (rawQ) => {
     const text = typeof rawQ === 'string' ? rawQ.trim().slice(0, 200) : ''
@@ -1157,7 +1152,7 @@ const getVenuesForUsers = async (page = 1, limit = 10, city = '', q = '') => {
   }
 
   const parts = []
-  const cityFilter = buildVenueCityFilter(city)
+  const cityFilter = venueCityFilter(city)
   if (Object.keys(cityFilter).length) parts.push(cityFilter)
   const textCond = buildVenueTextSearchCondition(q)
   if (textCond) parts.push(textCond)
@@ -1261,19 +1256,7 @@ const getPublishedBlogs = async (page = 1, limit = 10, category, city = '', q = 
   const query = { published: true }
   if (category) query.category = category
 
-  const buildBlogCityFilter = (raw) => {
-    if (!raw || typeof raw !== 'string') return {}
-    const trimmed = raw.trim()
-    if (!trimmed || /^across[\s-]*india$/i.test(trimmed)) return {}
-    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    return {
-      $or: [
-        { cities: { $exists: false } },
-        { cities: { $size: 0 } },
-        { cities: { $elemMatch: { $regex: escaped, $options: 'i' } } }
-      ]
-    }
-  }
+  const blogCityFilter = (raw) => buildBlogCityFilter(raw)
 
   const buildBlogTextSearchCondition = (rawQ) => {
     const text = typeof rawQ === 'string' ? rawQ.trim().slice(0, 200) : ''
@@ -1290,7 +1273,7 @@ const getPublishedBlogs = async (page = 1, limit = 10, category, city = '', q = 
   }
 
   const parts = [{ ...query }]
-  const cityFilter = buildBlogCityFilter(city)
+  const cityFilter = blogCityFilter(city)
   if (Object.keys(cityFilter).length) parts.push(cityFilter)
   const textCond = buildBlogTextSearchCondition(q)
   if (textCond) parts.push(textCond)
@@ -1367,8 +1350,8 @@ const getSimilarProducts = async (productId, limit = 8, city = '') => {
   // to products that serve that city; otherwise keep the legacy behaviour
   // of matching any city the source product itself serves.
   const userCityFilter = buildCityFilter(city)
-  if (userCityFilter['serviceableAreas.city']) {
-    similarQuery['serviceableAreas.city'] = userCityFilter['serviceableAreas.city']
+  if (userCityFilter && Object.keys(userCityFilter).length) {
+    Object.assign(similarQuery, userCityFilter)
   } else if (cities.length > 0) {
     similarQuery['serviceableAreas.city'] = { $in: cities }
   }
@@ -1455,7 +1438,7 @@ const deleteVenueReview = async (userId, reviewId) => {
   await VenueReview.findByIdAndDelete(reviewId)
 }
 
-const getSubCategoryPage = async (subCategoryName) => {
+const getSubCategoryPage = async (subCategoryName, city = '') => {
   const { findCategoryByNameOrSlug } = require('../utils/categoryNameLookup')
   const MainCategory = require('../models/main-category-model')
   const SubCategory = require('../models/sub-category-model')
@@ -1485,7 +1468,7 @@ const getSubCategoryPage = async (subCategoryName) => {
     .populate({ path: 'customizationSections.addons.addon' })
     .populate('addedBy')
 
-  const baseQuery = { thirdCategory: { $in: thirdCategoryIds } }
+  const baseQuery = { thirdCategory: { $in: thirdCategoryIds }, ...buildCityFilter(city) }
 
   const [featuredAndPremium, featuredOnly, premiumOnly, standard] = await Promise.all([
     populate(Product.find({ ...baseQuery, isFeatured: true, tier: 'premium' }).sort({ createdAt: -1 })),

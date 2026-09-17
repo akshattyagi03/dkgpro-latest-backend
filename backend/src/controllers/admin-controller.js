@@ -154,10 +154,12 @@ const addProduct = async (req, res) => {
     parseField('customizationSections')
     parseField('additionalCategories')
     parseField('inclusions')
+    parseField('exclusions')
     parseField('experiences')
     parseField('keyHighlights')
     parseField('tags')
     parseField('balloonColorSelection')
+    parseField('giftCardSelection')
     if (body.discountedPrice != null && body.discountedPrice !== '') body.discountedPrice = Number(body.discountedPrice)
 
     const product = await addProducts({ ...body, images }, req.admin._id)

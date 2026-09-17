@@ -1,5 +1,6 @@
 const mongoose = require('mongoose')
 const balloonColorSelectionSchema = require('./balloon-color-selection-schema')
+const giftCardSelectionSchema = require('./gift-card-selection-schema')
 
 const thirdCategorySchema = new mongoose.Schema({
   name: {
@@ -23,6 +24,11 @@ const thirdCategorySchema = new mongoose.Schema({
   /** Default balloon color presets for all products in this third category */
   balloonColorSelection: {
     type: balloonColorSelectionSchema,
+    default: undefined,
+  },
+  /** Default gift card sizes / labels for products in this third category */
+  giftCardSelection: {
+    type: giftCardSelectionSchema,
     default: undefined,
   },
 }, { timestamps: true })

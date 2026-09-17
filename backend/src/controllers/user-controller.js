@@ -542,7 +542,7 @@ const deleteVenueReviewController = async (req, res) => {
 
 const getSubCategoryPageController = async (req, res) => {
   try {
-    const result = await getSubCategoryPage(req.params.subCategory)
+    const result = await getSubCategoryPage(req.params.subCategory, req.query.city)
     res.status(HTTP_STATUS.OK).json(result)
   } catch (error) {
     res.status(HTTP_STATUS.NOT_FOUND).json({ message: error.message })

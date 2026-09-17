@@ -13,7 +13,17 @@ const balloonColorChoiceSchema = new mongoose.Schema(
   { _id: false }
 )
 
-/** Per cart/order line — booking pincode, date/time, balloon colour choice */
+const giftCardChoiceSchema = new mongoose.Schema(
+  {
+    babyName: { type: String, trim: true },
+    whichBirthday: { type: String, trim: true },
+    size: { type: String, trim: true },
+    sizePrice: { type: Number, min: 0 },
+  },
+  { _id: false }
+)
+
+/** Per cart/order line — booking pincode, date/time, balloon colour / gift card choice */
 const bookingDetailsSchema = new mongoose.Schema(
   {
     pincode: { type: String, trim: true },
@@ -23,6 +33,10 @@ const bookingDetailsSchema = new mongoose.Schema(
     endTime: { type: String, trim: true },
     balloonColorChoice: {
       type: balloonColorChoiceSchema,
+      default: undefined,
+    },
+    giftCardChoice: {
+      type: giftCardChoiceSchema,
       default: undefined,
     },
   },

@@ -79,29 +79,6 @@ router.patch("/corporate-bookings/:contactId/status", isAdmin, adminController.u
 // product-detail service pages (photography / catering / games / special effects)
 router.get("/service-pages", isAdmin, adminController.listServicePages)
 router.get("/service-pages/:serviceKey", isAdmin, adminController.getServicePageAdmin)
-router.put(
-  "/service-pages/:serviceKey",
-  isAdmin,
-  wrapUpload(upload.single('heroImage')),
-  adminController.updateServicePage
-)
-router.post(
-  "/service-pages/:serviceKey/items",
-  isAdmin,
-  wrapUpload(upload.single('image')),
-  adminController.addServicePageItem
-)
-router.put(
-  "/service-pages/:serviceKey/items/:itemId",
-  isAdmin,
-  wrapUpload(upload.single('image')),
-  adminController.updateServicePageItem
-)
-router.delete(
-  "/service-pages/:serviceKey/items/:itemId",
-  isAdmin,
-  adminController.deleteServicePageItem
-)
 //logout admin
 router.get("/logout", isAdmin, adminController.logout)
 //create additional category 

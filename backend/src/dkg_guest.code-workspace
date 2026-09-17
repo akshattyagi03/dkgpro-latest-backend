@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "../../../dkg_guest"
+		},
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../dkgpro.admin"
+		}
+	],
+	"settings": {
+		"typescript.tsdk": "node_modules/typescript/lib",
+		"typescript.enablePromptUseWorkspaceTsdk": true
+	}
+}

@@ -9,7 +9,7 @@ const DEFAULT_SECTIONS = [
     slug: 'balloon-ring',
     title: 'Balloon Ring Decoration',
     subtitle:
-      'we are thrilled to offer a range of exceptional decoration services tailored to elevate your space.',
+      'Statement balloon rings and entrance pieces that hold up in person and in photographs.',
     exploreHref: '/categories/decorations/balloon-decorations',
     sortOrder: 10,
     resolve: { kind: 'subByUrlSegment', segment: 'balloon-decorations', mainSegment: 'decorations' }
@@ -18,7 +18,7 @@ const DEFAULT_SECTIONS = [
     slug: 'wedding-decoration',
     title: 'Wedding Decoration',
     subtitle:
-      'we are thrilled to offer a range of exceptional decoration services tailored to elevate your space.',
+      'Stage, entrance, and venue styling for the wedding — booked as one coordinated setup.',
     exploreHref: '/categories/decorations/theme-decorations',
     sortOrder: 20,
     resolve: { kind: 'subByUrlSegment', segment: 'theme-decorations', mainSegment: 'decorations' }
@@ -27,7 +27,7 @@ const DEFAULT_SECTIONS = [
     slug: 'bridal-entry-decoration',
     title: 'Bridal Entry Decoration',
     subtitle:
-      'we are thrilled to offer a range of exceptional decoration services tailored to elevate your space.',
+      'Entrance and room setups that make the bridal walk the moment everyone remembers.',
     exploreHref: '/categories/decorations/room-decorations',
     sortOrder: 30,
     resolve: { kind: 'subByUrlSegment', segment: 'room-decorations', mainSegment: 'decorations' }
@@ -36,7 +36,7 @@ const DEFAULT_SECTIONS = [
     slug: 'bachelors-party-decoration',
     title: "Bachelor's Party Decoration",
     subtitle:
-      'we are thrilled to offer a range of exceptional decoration services tailored to elevate your space.',
+      'Bold party decor for bachelor and bachelorette nights at home or a booked venue.',
     exploreHref: '/categories/occasions/birthday',
     sortOrder: 40,
     resolve: { kind: 'subByUrlSegment', segment: 'birthday', mainSegment: 'occasions' }
@@ -45,7 +45,7 @@ const DEFAULT_SECTIONS = [
     slug: 'anniversary',
     title: 'Anniversary Decoration Surprises',
     subtitle:
-      'we are thrilled to offer a range of exceptional decoration services tailored to elevate your space.',
+      'Anniversary room decor, dinners, and surprises planned around the two of you.',
     exploreHref: '/categories/occasions/anniversary',
     sortOrder: 50,
     resolve: { kind: 'subByUrlSegment', segment: 'anniversary', mainSegment: 'occasions' }
@@ -54,7 +54,7 @@ const DEFAULT_SECTIONS = [
     slug: 'rooftop-decoration',
     title: 'Rooftop Decoration At Home',
     subtitle:
-      'we are thrilled to offer a range of exceptional decoration services tailored to elevate your space.',
+      'Rooftop setups at home for dinners, birthdays, and small celebrations under the sky.',
     exploreHref: '/categories/experiences/dining-experiences/rooftop-dining',
     sortOrder: 60,
     resolve: {
@@ -128,13 +128,10 @@ async function findSubCategoryByUrlSegment(segment, mainSegment = null) {
   return null
 }
 
+const { buildProductCityFilter } = require('../utils/cityMatch')
+
 function buildCityFilterForSections(city) {
-  if (!city || typeof city !== 'string') return {}
-  const trimmed = city.trim()
-  if (!trimmed) return {}
-  if (/^across[\s-]*india$/i.test(trimmed)) return {}
-  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return { 'serviceableAreas.city': { $regex: escaped, $options: 'i' } }
+  return buildProductCityFilter(city)
 }
 
 async function fetchProductsForResolve(resolve, limit = 4, city = '') {
@@ -212,7 +209,12 @@ async function getMergedHomeProductSections(city = '') {
     if (row && row.isActive === false) continue
 
     const title = (row && row.title) || def.title
-    const subtitle = (row && row.subtitle) || def.subtitle
+    const rawSubtitle = row && typeof row.subtitle === 'string' ? row.subtitle.trim() : ''
+    const isLegacyDefault =
+      /^we are thrilled to offer a range of exceptional decoration services tailored to elevate your space\.?$/i.test(
+        rawSubtitle
+      )
+    const subtitle = rawSubtitle && !isLegacyDefault ? rawSubtitle : def.subtitle
     const exploreHref = (row && row.exploreHref) || def.exploreHref
     const sortOrder = row && typeof row.sortOrder === 'number' ? row.sortOrder : def.sortOrder
 

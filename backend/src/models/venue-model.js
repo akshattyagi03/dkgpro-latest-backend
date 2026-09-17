@@ -18,7 +18,12 @@ const venueSchema = new mongoose.Schema({
       trim: true
     },
     lat: Number,
-    lng: Number
+    lng: Number,
+    /** Google Maps / maps.app.goo.gl place link used by “Open in Maps”. */
+    mapsUrl: {
+      type: String,
+      trim: true
+    }
   },
 
   images: [

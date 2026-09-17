@@ -95,6 +95,21 @@ function formatBalloonColorsForInvoice(choice) {
   return choice.label?.trim() || null
 }
 
+function formatGiftCardForInvoice(choice) {
+  if (!choice || typeof choice !== 'object') return null
+  const parts = []
+  if (choice.babyName?.trim()) parts.push(`Baby name: ${choice.babyName.trim()}`)
+  if (choice.whichBirthday?.trim()) parts.push(`Birthday: ${choice.whichBirthday.trim()}`)
+  if (choice.size?.trim()) {
+    let sizeLine = choice.size.trim()
+    if (Number(choice.sizePrice) > 0) {
+      sizeLine += ` (₹${Number(choice.sizePrice).toLocaleString('en-IN')})`
+    }
+    parts.push(`Size: ${sizeLine}`)
+  }
+  return parts.length ? parts.join(' · ') : null
+}
+
 function buildProductDescription(item) {
   const parts = []
   if (item.product?.description) parts.push(item.product.description)
@@ -103,6 +118,9 @@ function buildProductDescription(item) {
   if (booking) {
     const balloonColors = formatBalloonColorsForInvoice(booking.balloonColorChoice)
     if (balloonColors) parts.push(`Balloon colors: ${balloonColors}`)
+
+    const giftCard = formatGiftCardForInvoice(booking.giftCardChoice)
+    if (giftCard) parts.push(giftCard)
 
     if (booking.bookingDate) {
       let schedule = `Service date: ${booking.bookingDate}`
@@ -412,8 +430,8 @@ const sendOrderConfirmationEmail = async (email, order) => {
     `
   }).join('')
 
-  const { street, city, state, zipCode, country } = order.shippingAddress || {}
-  const addressLine = [street, city, state, zipCode, country].filter(Boolean).join('<br/>')
+  const { street, city, state, zipCode, country, phoneNumber, alternatePhoneNumber } = order.shippingAddress || {}
+  const addressLine = [street, city, state, zipCode, country, phoneNumber, alternatePhoneNumber].filter(Boolean).join('<br/>')
   const orderNumber = `ORD-${order._id.toString().slice(-6).toUpperCase()}`
   const invoiceDate = new Date(order.updatedAt || Date.now()).toLocaleDateString('en-IN')
   const taxAmount = order.taxAmount || 0
@@ -657,7 +675,7 @@ const sendOrderConfirmationEmail = async (email, order) => {
 
 const sendOrderNotificationToSuperAdmin = async (superAdminEmail, order) => {
   const orderNumber = `ORD-${order._id.toString().slice(-6).toUpperCase()}`
-  const { street, city, state, zipCode, country } = order.shippingAddress || {}
+  const { street, city, state, zipCode, country, phoneNumber, alternatePhoneNumber } = order.shippingAddress || {}
   const addressLine = [street, city, state, zipCode, country].filter(Boolean).join(', ')
 
   const itemRows = buildInvoiceRows(order).map((row) => {
@@ -691,6 +709,8 @@ const sendOrderNotificationToSuperAdmin = async (superAdminEmail, order) => {
           <tr><td style="padding:6px;color:#666"><strong>Email:</strong></td><td style="padding:6px">${order.user?.email || 'N/A'}</td></tr>
           <tr><td style="padding:6px;color:#666"><strong>Payment ID:</strong></td><td style="padding:6px">${order.razorpayPaymentId || 'N/A'}</td></tr>
           ${addressLine ? `<tr><td style="padding:6px;color:#666"><strong>Address:</strong></td><td style="padding:6px">${addressLine}</td></tr>` : ''}
+          ${phoneNumber ? `<tr><td style="padding:6px;color:#666"><strong>Phone:</strong></td><td style="padding:6px">${phoneNumber}</td></tr>` : ''}
+          ${alternatePhoneNumber ? `<tr><td style="padding:6px;color:#666"><strong>Alternate phone:</strong></td><td style="padding:6px">${alternatePhoneNumber}</td></tr>` : ''}
         </table>
 
         <table style="width:100%;border-collapse:collapse;margin:20px 0">

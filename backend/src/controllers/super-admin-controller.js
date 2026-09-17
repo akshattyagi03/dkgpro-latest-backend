@@ -140,10 +140,12 @@ const updateProduct = async (req, res) => {
     parseField('customizationSections')
     parseField('additionalCategories')
     parseField('inclusions')
+    parseField('exclusions')
     parseField('experiences')
     parseField('keyHighlights')
     parseField('tags')
     parseField('balloonColorSelection')
+    parseField('giftCardSelection')
     if (newImageUrls.length > 0) {
       const existing = Array.isArray(body.images) ? body.images : []
       body.images = [...existing, ...newImageUrls]
@@ -432,6 +434,13 @@ const updateThirdCategory = async (req, res) => {
         updateData.balloonColorSelection = JSON.parse(updateData.balloonColorSelection)
       } catch {
         delete updateData.balloonColorSelection
+      }
+    }
+    if (typeof updateData.giftCardSelection === 'string') {
+      try {
+        updateData.giftCardSelection = JSON.parse(updateData.giftCardSelection)
+      } catch {
+        delete updateData.giftCardSelection
       }
     }
     if (bannerImage) updateData.bannerImage = bannerImage

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose')
 const balloonColorSelectionSchema = require('./balloon-color-selection-schema')
+const giftCardSelectionSchema = require('./gift-card-selection-schema')
 
 const productSchema = new mongoose.Schema({
   name: {
@@ -100,6 +101,10 @@ const productSchema = new mongoose.Schema({
     required: true,
     trim: true
   }],
+  exclusions: [{
+    type: String,
+    trim: true
+  }],
   experiences: [{
     type: String,
     required: true,
@@ -151,6 +156,11 @@ const productSchema = new mongoose.Schema({
   /** Balloon color picker on PDP — Decorations › Balloon Decoration products */
   balloonColorSelection: {
     type: balloonColorSelectionSchema,
+    default: undefined,
+  },
+  /** Gift card personalization on PDP — Gifts › Digital Gift Card products */
+  giftCardSelection: {
+    type: giftCardSelectionSchema,
     default: undefined,
   },
   /** Set only by catalog seed scripts; stripped from API JSON via toJSON. Used for idempotent cleanup. */
