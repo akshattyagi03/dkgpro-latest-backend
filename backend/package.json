@@ -14,8 +14,9 @@
     "seed:balloon-addons": "node seed-balloon-products-addons.js",
     "seed:products": "node seed-addon.js && node dummyContentSeed.js && node testProductsSeed.js && node seed-balloon-color-test-product.js && node seed-balloon-products-addons.js && node seed-service-pages.js",
     "seed:all": "node fullCategorySeed.js && node dummyContentSeed.js",
-    "test": "node --test src/services/pincode-services.test.js",
-    "test:pincode": "node --test src/services/pincode-services.test.js"
+    "test": "node --test src/services/pincode-services.test.js src/services/super-admin-services.admin-management.test.js",
+    "test:pincode": "node --test src/services/pincode-services.test.js",
+    "test:admin-management": "node --test src/services/super-admin-services.admin-management.test.js"
   },
   "dependencies": {
     "aws-sdk": "^2.1692.0",

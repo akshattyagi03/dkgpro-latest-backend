@@ -28,6 +28,12 @@ const adminSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  // Account enable/disable switch, independent of approval status.
+  // Defaults to true so existing/newly-created admins remain enabled unless a super admin disables them.
+  isActive: {
+    type: Boolean,
+    default: true
+  },
   approvedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'SuperAdmin'
@@ -43,12 +49,26 @@ const adminSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 })
 
+// Supports the super-admin admin-listing endpoint, which commonly filters/sorts by approval + active status.
+adminSchema.index({ isApproved: 1, isActive: 1 })
+
 adminSchema.pre('save', async function(next) {
+  this.updatedAt = Date.now()
   if (!this.isModified('password')) return next()
   this.password = await bcrypt.hash(this.password, 10)
+  next()
+})
+
+// Covers findByIdAndUpdate/findOneAndUpdate call sites (e.g. admin approval), which bypass 'save' hooks.
+adminSchema.pre('findOneAndUpdate', function(next) {
+  this.set({ updatedAt: Date.now() })
   next()
 })
 

@@ -88,13 +88,24 @@ const loginSuperAdmin = async (superAdminData, res) => {
   return { superAdmin: { id: superAdmin._id, fullName: superAdmin.fullName, email } }
 }
 
+// Fields considered safe to return to a super admin. Password/hash is always excluded.
+const ADMIN_SAFE_FIELDS = '-password'
+
+const assertValidAdminId = (adminId) => {
+  const mongoose = require('mongoose')
+  if (!adminId || !mongoose.Types.ObjectId.isValid(adminId)) {
+    throw new Error('Invalid admin ID')
+  }
+}
+
 const getPendingAdmins = async () => {
   const Admin = require('../models/admin-model')
-  const pendingAdmins = await Admin.find({ isApproved: false })
+  const pendingAdmins = await Admin.find({ isApproved: false }).select(ADMIN_SAFE_FIELDS)
   return pendingAdmins
 }
 
 const approveAdmin = async (adminId, superAdminId) => {
+  assertValidAdminId(adminId)
   const Admin = require('../models/admin-model')
   const admin = await Admin.findByIdAndUpdate(
     adminId,
@@ -103,7 +114,7 @@ const approveAdmin = async (adminId, superAdminId) => {
       approvedBy: superAdminId
     },
     { new: true }
-  )
+  ).select(ADMIN_SAFE_FIELDS)
   
   if (!admin) {
     throw new Error('Admin not found')
@@ -113,8 +124,9 @@ const approveAdmin = async (adminId, superAdminId) => {
 }
 
 const rejectAdmin = async (adminId) => {
+  assertValidAdminId(adminId)
   const Admin = require('../models/admin-model')
-  const admin = await Admin.findByIdAndDelete(adminId)
+  const admin = await Admin.findByIdAndDelete(adminId).select(ADMIN_SAFE_FIELDS)
   
   if (!admin) {
     throw new Error('Admin not found')
@@ -433,10 +445,111 @@ const getAllVenues = async (page = 1, limit = 10) => {
   }
 }
 
+// Lists admins for the super-admin dashboard.
+// The listed `admins` page is always restricted to approved admins (disabled admins remain in this
+// list — isActive: false — so a super admin can find and re-enable them; only isApproved gates
+// visibility here, not isActive). Pending/unapproved admins already have their own dedicated endpoint
+// (getPendingAdmins) and are intentionally excluded from this list.
+//
+// Two distinct counts are returned alongside the page, per the schema's two independent concepts:
+//   totalAdmins          - count of ALL Admin documents in the collection (approved + pending)
+//   totalApprovedAdmins  - count of Admin documents where isApproved === true (what `admins` paginates over)
+// Both use Mongoose's countDocuments (an efficient server-side count), never a full fetch.
+const getApprovedAdmins = async (page = 1, limit = 10) => {
+  const Admin = require('../models/admin-model')
+
+  const pageNum = Math.max(parseInt(page) || 1, 1)
+  const limitNum = Math.min(parseInt(limit) || 10, 50)
+  const skip = (pageNum - 1) * limitNum
+
+  const approvedFilter = { isApproved: true }
+
+  const [admins, totalApprovedAdmins, totalAdmins] = await Promise.all([
+    Admin.find(approvedFilter)
+      .select(ADMIN_SAFE_FIELDS)
+      .skip(skip)
+      .limit(limitNum)
+      .sort({ createdAt: -1 })
+      .lean(),
+    Admin.countDocuments(approvedFilter),
+    Admin.countDocuments()
+  ])
+
+  return {
+    admins,
+    pagination: {
+      currentPage: pageNum,
+      totalPages: Math.ceil(totalApprovedAdmins / limitNum),
+      totalAdmins,
+      totalApprovedAdmins,
+      hasNext: pageNum < Math.ceil(totalApprovedAdmins / limitNum),
+      hasPrev: pageNum > 1
+    }
+  }
+}
+
+// Kept for backward compatibility with any existing callers of the unpaginated "all admins" service.
 const getAllAdmins = async () => {
   const Admin = require('../models/admin-model')
-  const admins = await Admin.find().select('-password')
+  const admins = await Admin.find().select(ADMIN_SAFE_FIELDS)
   return admins
+}
+
+// Enables or disables an admin account using the existing `isActive` flag.
+// Throws distinguishable errors so the controller can map them to the right HTTP status:
+//   'Admin not found'              -> 404
+//   'Admin is already <state>'     -> 409 (no-op state transition)
+const setAdminActiveStatus = async (adminId, isActive) => {
+  assertValidAdminId(adminId)
+  const Admin = require('../models/admin-model')
+
+  const admin = await Admin.findById(adminId)
+  if (!admin) {
+    throw new Error('Admin not found')
+  }
+
+  if (admin.isActive === isActive) {
+    throw new Error(`Admin is already ${isActive ? 'enabled' : 'disabled'}`)
+  }
+
+  admin.isActive = isActive
+  await admin.save()
+
+  const { password, ...safeAdmin } = admin.toObject()
+  return safeAdmin
+}
+
+// Permanently deletes an admin account.
+// Products and blogs reference admins via required `addedBy`/`author` fields with no cascade-delete
+// logic anywhere in the codebase, so deletion is blocked while dependent records exist to avoid
+// orphaning them. The super admin must reassign or remove those records first.
+const deleteAdminAccount = async (adminId) => {
+  assertValidAdminId(adminId)
+  const Admin = require('../models/admin-model')
+  const Product = require('../models/product-model')
+  const Blog = require('../models/blog-model')
+
+  const admin = await Admin.findById(adminId)
+  if (!admin) {
+    throw new Error('Admin not found')
+  }
+
+  const [productCount, blogCount] = await Promise.all([
+    Product.countDocuments({ addedBy: adminId }),
+    Blog.countDocuments({ author: adminId })
+  ])
+
+  if (productCount > 0 || blogCount > 0) {
+    const parts = []
+    if (productCount > 0) parts.push(`${productCount} product(s)`)
+    if (blogCount > 0) parts.push(`${blogCount} blog(s)`)
+    throw new Error(
+      `Cannot delete admin: ${parts.join(' and ')} are still linked to this admin. Reassign or remove them first.`
+    )
+  }
+
+  await Admin.findByIdAndDelete(adminId)
+  return { adminId }
 }
 
 const sendSuperAdminPasswordResetOTP = async (superAdminData) => {
@@ -720,6 +833,9 @@ module.exports = {
   getPendingAdmins, 
   approveAdmin, 
   rejectAdmin, 
+  getApprovedAdmins,
+  setAdminActiveStatus,
+  deleteAdminAccount,
   getAllProducts, 
   filterProducts,
   editProduct, 

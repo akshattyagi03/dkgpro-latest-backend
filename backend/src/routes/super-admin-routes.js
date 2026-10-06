@@ -30,12 +30,16 @@ router.post('/verify-phone-login', superAdminController.verifyPhoneLogin)
 router.post('/login', superAdminController.login)
 //get pending admins list
 router.get("/pending-admins", isSuperAdmin, superAdminController.getPendingAdminRequests)
-//get all admins
+//get approved admins (paginated) — pagination includes totalAdmins (all Admin docs) and totalApprovedAdmins (isApproved: true)
 router.get("/admins", isSuperAdmin, superAdminController.getAdmins)
 //approve admins
 router.post("/approve-admin/:adminId", isSuperAdmin, superAdminController.approveAdminRequest)
 //reject admins
 router.post("/reject-admin/:adminId", isSuperAdmin, superAdminController.rejectAdminRequest)
+//enable/disable an admin account (body: { isActive: boolean })
+router.patch("/admins/:adminId/status", isSuperAdmin, superAdminController.updateAdminStatus)
+//permanently delete an admin account
+router.delete("/admins/:adminId", isSuperAdmin, superAdminController.deleteAdmin)
 //get all products
 router.get("/products", isSuperAdmin, superAdminController.getProducts)
 //filter products

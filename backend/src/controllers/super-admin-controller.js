@@ -9,6 +9,9 @@ const {
   getPendingAdmins, 
   approveAdmin, 
   rejectAdmin, 
+  getApprovedAdmins,
+  setAdminActiveStatus,
+  deleteAdminAccount,
   getAllProducts, 
   filterProducts,
   editProduct, 
@@ -88,10 +91,10 @@ const getPendingAdminRequests = async (req, res) => {
 
 const approveAdminRequest = async (req, res) => {
   try {
-    const admin = await approveAdmin(req.params.adminId)
+    const admin = await approveAdmin(req.params.adminId, req.superAdmin._id)
     res.status(200).json({ message: 'Admin approved successfully', admin })
   } catch (error) {
-    res.status(400).json({ message: error.message })
+    res.status(error.message === 'Admin not found' ? 404 : 400).json({ message: error.message })
   }
 }
 
@@ -100,7 +103,7 @@ const rejectAdminRequest = async (req, res) => {
     await rejectAdmin(req.params.adminId)
     res.status(200).json({ message: 'Admin rejected and removed' })
   } catch (error) {
-    res.status(400).json({ message: error.message })
+    res.status(error.message === 'Admin not found' ? 404 : 400).json({ message: error.message })
   }
 }
 
@@ -218,11 +221,63 @@ const deleteVenue = async (req, res) => {
   }
 }
 
+// Lists approved admins for the super-admin dashboard, paginated.
+// `pagination.totalAdmins` is the count of ALL Admin documents; `pagination.totalApprovedAdmins`
+// is the count of Admin documents with isApproved: true (the set `admins` paginates over).
 const getAdmins = async (req, res) => {
   try {
-    const admins = await getAllAdmins()
-    res.status(200).json({ admins })
+    const result = await getApprovedAdmins(req.query.page, req.query.limit)
+    res.status(200).json(result)
   } catch (error) {
+    res.status(400).json({ message: error.message })
+  }
+}
+
+// Enables or disables an admin account. A super admin cannot be targeted (super admins live in a
+// separate collection; the :adminId param only ever resolves against the Admin collection, so this
+// route structurally cannot act on a SuperAdmin document).
+const updateAdminStatus = async (req, res) => {
+  try {
+    const { isActive } = req.body
+    if (typeof isActive !== 'boolean') {
+      return res.status(400).json({ message: 'isActive must be a boolean (true to enable, false to disable)' })
+    }
+
+    const admin = await setAdminActiveStatus(req.params.adminId, isActive)
+    res.status(200).json({
+      message: `Admin ${isActive ? 'enabled' : 'disabled'} successfully`,
+      admin
+    })
+  } catch (error) {
+    if (error.message === 'Admin not found') {
+      return res.status(404).json({ message: error.message })
+    }
+    if (error.message.startsWith('Admin is already')) {
+      return res.status(409).json({ message: error.message })
+    }
+    if (error.message === 'Invalid admin ID') {
+      return res.status(400).json({ message: error.message })
+    }
+    res.status(400).json({ message: error.message })
+  }
+}
+
+// Permanently deletes an admin account. Blocked if the admin still has products/blogs
+// referencing them (see deleteAdminAccount for why cascading delete is intentionally avoided).
+const deleteAdmin = async (req, res) => {
+  try {
+    await deleteAdminAccount(req.params.adminId)
+    res.status(200).json({ message: 'Admin deleted successfully' })
+  } catch (error) {
+    if (error.message === 'Admin not found') {
+      return res.status(404).json({ message: error.message })
+    }
+    if (error.message === 'Invalid admin ID') {
+      return res.status(400).json({ message: error.message })
+    }
+    if (error.message.startsWith('Cannot delete admin:')) {
+      return res.status(409).json({ message: error.message })
+    }
     res.status(400).json({ message: error.message })
   }
 }
@@ -607,6 +662,8 @@ module.exports = {
   editVenue,
   deleteVenue,
   getAdmins,
+  updateAdminStatus,
+  deleteAdmin,
   getInquiries,
   getCorporateBookings: getCorporateBookingsController,
   updateCorporateBookingStatus: updateCorporateBookingStatusController,
